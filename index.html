@@ -706,7 +706,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
         <div class="dd-item" onclick="showPage('supplier',document.getElementById('dd-inventori'));closeAllDropdowns()">🚚 Stok Masuk</div>
         <div class="dd-item" onclick="openBeliModal();closeAllDropdowns()">➕ Catat Pembelian</div>
         <div class="dd-divider"></div>
-        <div class="dd-item" onclick="openKatModal();closeAllDropdowns()">🏷️ Tambah Kategori</div>
+        <div class="dd-item" onclick="showPage('kat-manager',document.getElementById('dd-inventori'));closeAllDropdowns()">🏷️ Daftar Kategori</div>
+        <div class="dd-item" onclick="openSubKatModal();closeAllDropdowns()">↳ Daftar Sub Kategori</div>
       </div>
     </div>
 
@@ -915,7 +916,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
         </select>
       </div>
       <table>
-        <thead><tr><th>Nama Produk</th><th>Kategori</th><th>Harga</th><th>Stok</th><th>Kode</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Nama Produk</th><th>Kategori</th><th>Sub Kategori</th><th>Harga</th><th>Stok</th><th>Kode</th><th>Status</th><th></th></tr></thead>
         <tbody id="produk-tbody"></tbody>
       </table>
     </div>
@@ -1095,6 +1096,18 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
   </div>
 
 <!-- MODALS -->
+
+<!-- ══ PAGE: DAFTAR KATEGORI ══ -->
+<div class="page" data-page="kat-manager" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+    <div>
+      <div class="page-title">🏷️ Daftar Kategori</div>
+      <div class="page-sub">Kelola kategori & sub kategori produk</div>
+    </div>
+    <button class="btn btn-primary" onclick="openKatModal()">+ Tambah Kategori</button>
+  </div>
+  <div id="kat-manager-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
+</div>
 <div class="modal-overlay" id="modal-produk">
   <div class="modal">
     <div class="modal-header">
@@ -1453,12 +1466,99 @@ function renderKatFilter() {
 }
 
 function renderKatManager() {
-  document.getElementById('kat-manager').innerHTML = S.kategori.map(k => `
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
-      <div style="width:12px;height:12px;border-radius:3px;background:${k.warna};flex-shrink:0"></div>
-      <span style="flex:1;font-size:0.82rem">${k.nama}</span>
-      <button class="btn btn-sm btn-danger" onclick="hapusKat('${k.id}')">Hapus</button>
-    </div>`).join('');
+  // Support both old kat-manager (settings) and new kat-manager-list (page)
+  var oldEl = document.getElementById('kat-manager');
+  var newEl = document.getElementById('kat-manager-list');
+  
+  if (oldEl) {
+    oldEl.innerHTML = '';
+    S.kategori.forEach(function(k) {
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)';
+      var dot = document.createElement('div');
+      dot.style.cssText = 'width:12px;height:12px;border-radius:3px;background:'+k.warna+';flex-shrink:0';
+      var span = document.createElement('span');
+      span.style.cssText = 'flex:1;font-size:0.82rem';
+      span.textContent = k.nama;
+      var btn = document.createElement('button');
+      btn.className = 'btn btn-sm btn-danger';
+      btn.textContent = 'Hapus';
+      btn.dataset.id = k.id;
+      btn.onclick = function() { hapusKat(this.dataset.id); };
+      row.appendChild(dot); row.appendChild(span); row.appendChild(btn);
+      oldEl.appendChild(row);
+    });
+  }
+  
+  if (newEl) {
+    newEl.innerHTML = '';
+    if (!S.kategori.length) {
+      newEl.innerHTML = '<div style="color:var(--ink3);font-size:0.82rem;padding:1rem">Belum ada kategori.</div>';
+      return;
+    }
+    S.kategori.forEach(function(k) {
+      var subs = (S.subKategori||[]).filter(function(s){return s.katId===k.id;});
+      
+      // Card container
+      var card = document.createElement('div');
+      card.style.cssText = 'background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden';
+      
+      // Header row
+      var header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:'+k.warna+'18';
+      
+      var dot = document.createElement('div');
+      dot.style.cssText = 'width:14px;height:14px;border-radius:4px;background:'+k.warna;
+      
+      var nameSpan = document.createElement('span');
+      nameSpan.style.cssText = 'flex:1;font-weight:600;font-size:0.88rem';
+      nameSpan.textContent = k.nama;
+      
+      var btnSub = document.createElement('button');
+      btnSub.className = 'btn btn-sm';
+      btnSub.style.fontSize = '0.72rem';
+      btnSub.textContent = '+ Sub';
+      btnSub.dataset.katId = k.id;
+      btnSub.onclick = function() { openSubKatModalFor(this.dataset.katId); };
+      
+      var btnHapus = document.createElement('button');
+      btnHapus.className = 'btn btn-sm btn-danger';
+      btnHapus.style.fontSize = '0.72rem';
+      btnHapus.textContent = 'Hapus';
+      btnHapus.dataset.katId = k.id;
+      btnHapus.onclick = function() { hapusKat(this.dataset.katId); };
+      
+      header.appendChild(dot); header.appendChild(nameSpan);
+      header.appendChild(btnSub); header.appendChild(btnHapus);
+      card.appendChild(header);
+      
+      // Sub kategori rows
+      if (subs.length) {
+        subs.forEach(function(s) {
+          var subRow = document.createElement('div');
+          subRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 12px 6px 28px;border-top:1px solid var(--border)';
+          var subName = document.createElement('span');
+          subName.style.cssText = 'font-size:0.78rem;color:var(--ink2)';
+          subName.textContent = '› ' + s.nama;
+          var subBtn = document.createElement('button');
+          subBtn.className = 'btn btn-sm btn-danger';
+          subBtn.style.fontSize = '0.72rem';
+          subBtn.textContent = 'Hapus';
+          subBtn.dataset.subId = s.id;
+          subBtn.onclick = function() { hapusSubKat(this.dataset.subId); };
+          subRow.appendChild(subName); subRow.appendChild(subBtn);
+          card.appendChild(subRow);
+        });
+      } else {
+        var noSub = document.createElement('div');
+        noSub.style.cssText = 'font-size:0.75rem;color:var(--ink3);padding:5px 12px 5px 28px;border-top:1px solid var(--border)';
+        noSub.textContent = 'Belum ada sub kategori';
+        card.appendChild(noSub);
+      }
+      
+      newEl.appendChild(card);
+    });
+  }
 }
 
 async function hapusKat(id) {
@@ -1557,6 +1657,7 @@ function renderProdukTable() {
     return `<tr>
       <td><div style="font-weight:600">${p.nama}</div>${p.modal?`<div style="font-size:0.7rem;color:var(--ink3)">Modal: ${fmt(p.modal)}</div>`:''}</td>
       <td><span class="badge" style="background:${k.warna}18;color:${k.warna}">${k.nama}</span></td>
+      <td style="font-size:0.78rem;color:var(--ink2)">${(S.subKategori||[]).find(s=>s.id===p.subKatId)?.nama||'—'}</td>
       <td style="font-family:var(--mono);font-weight:600">${fmt(p.harga)}</td>
       <td>${stokBadge}</td>
       <td style="font-family:var(--mono);color:var(--ink3)">${p.kode||'—'}</td>
@@ -2813,7 +2914,7 @@ async function saveProduk() {
   const stokMin = parseInt(document.getElementById('p-stok-min').value) || 5;
   const kode = document.getElementById('p-kode').value.trim();
   const katId = document.getElementById('p-kat').value || null;
-  const subKatId = document.getElementById('p-subkat')?.value || null;
+  const subKatIdRaw = document.getElementById('p-subkat')?.value; const subKatId = subKatIdRaw && subKatIdRaw !== '' ? subKatIdRaw : null;
   const stokAktif = document.getElementById('p-stok-aktif').value === '1';
   const varianStr = document.getElementById('p-varian')?.value || '';
   const toppingStr = document.getElementById('p-topping')?.value || '';
@@ -3642,6 +3743,15 @@ async function hapusSubKat(id) {
   renderManageSubKat();
   renderKatBar();
   showToast('Sub kategori dihapus');
+}
+
+
+function openSubKatModalFor(katId) {
+  openSubKatModal();
+  setTimeout(function() {
+    var sel = document.getElementById('manage-kat-select');
+    if (sel) { sel.value = katId; renderManageSubKat(); }
+  }, 100);
 }
 
 </script>

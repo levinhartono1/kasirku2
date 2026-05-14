@@ -558,12 +558,33 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
 </style>
 </head>
 <body>
+<!-- LOADING SCREEN -->
+<div id="loading-screen" style="
+  position:fixed;inset:0;background:#1c1a17;z-index:99999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+">
+  <div style="font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;color:#fff">
+    Kasir<span style="color:#d4450c">Ku</span>
+  </div>
+  <div style="display:flex;gap:6px">
+    <div style="width:8px;height:8px;border-radius:50%;background:#d4450c;animation:ld-bounce 0.8s ease-in-out infinite"></div>
+    <div style="width:8px;height:8px;border-radius:50%;background:#d4450c;animation:ld-bounce 0.8s ease-in-out 0.15s infinite"></div>
+    <div style="width:8px;height:8px;border-radius:50%;background:#d4450c;animation:ld-bounce 0.8s ease-in-out 0.3s infinite"></div>
+  </div>
+  <style>
+    @keyframes ld-bounce {
+      0%,100%{transform:translateY(0);opacity:0.4}
+      50%{transform:translateY(-8px);opacity:1}
+    }
+  </style>
+</div>
+
 <!-- ══════════════════════════════════════════════
      AUTH SCREEN (Login / Register)
 ══════════════════════════════════════════════ -->
 <div id="auth-screen" style="
   position:fixed;inset:0;background:#1c1a17;z-index:99999;
-  display:flex;align-items:center;justify-content:center;
+  display:none;align-items:center;justify-content:center;
   font-family:'DM Sans',sans-serif;
 ">
   <div style="
@@ -702,7 +723,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
       <div class="nav-dd-menu">
         <div class="dd-item" onclick="showPage('riwayat',document.getElementById('dd-laporan'));closeAllDropdowns()">🧾 Riwayat Transaksi</div>
         <div class="dd-item" onclick="showPage('laporan',document.getElementById('dd-laporan'));closeAllDropdowns()">📄 Laporan Keuangan</div>
-        <div class="dd-item" onclick="window.location.href='laporan.html'">📊 Analitik & Grafik</div>
         <div class="dd-item" onclick="exportCSV();closeAllDropdowns()">⬇️ Export CSV</div>
       </div>
     </div>
@@ -3295,6 +3315,7 @@ async function onAuthSuccess(user) {
   }
 
   // Hide auth screen
+  document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'none';
   // Load data from Supabase
   await loadFromSupabase();
@@ -3354,12 +3375,17 @@ window.addEventListener('resize', () => {
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     await onAuthSuccess(session.user);
+  } else {
+    // Tidak ada session — sembunyikan loading, tampilkan login
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
   }
   // Listen for auth state changes
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session) {
       await onAuthSuccess(session.user);
     } else if (event === 'SIGNED_OUT') {
+      document.getElementById('loading-screen').style.display = 'none';
       document.getElementById('auth-screen').style.display = 'flex';
     }
   });

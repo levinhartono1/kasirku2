@@ -1425,21 +1425,26 @@ function getKat(id) { return S.kategori.find(k => k.id === id) || { nama: '—',
 // ══════════════════════════════════════════════════
 function renderKatBar() {
   const el = document.getElementById('kat-bar');
-  const subKats = (S.subKategori||[]).filter(s => s.katId === S.katFilter);
-  el.innerHTML = 
-    `<div class="kat-pill ${!S.katFilter&&!S.subKatFilter?'active':''}" onclick="setKat(null)">🏪 Semua</div>` +
-    S.kategori.map(k => {
-      const isActive = S.katFilter === k.id;
-      const subs = (S.subKategori||[]).filter(s => s.katId === k.id);
-      return `<div class="kat-pill ${isActive&&!S.subKatFilter?'active':''}" style="${isActive?`background:${k.warna};border-color:${k.warna}`:'border-color:'+k.warna+';color:'+k.warna}" onclick="setKat('${k.id}')">${k.nama}${subs.length?` (${subs.length})`:''}</div>` +
-        (isActive && subs.length ? subs.map(s =>
-          `<div class="kat-pill ${S.subKatFilter===s.id?'active':''}" style="font-size:0.72rem;padding:4px 10px;margin-left:8px;${S.subKatFilter===s.id?`background:${k.warna};border-color:${k.warna}`:'border-color:'+k.warna+';color:'+k.warna}" onclick="setSubKat('${s.id}',event)">↳ ${s.nama}</div>`
-        ).join('') : '');
-    }).join('');
+  const subKats = S.subKategori || [];
+  let pills = '';
+  pills += '<div class="kat-pill ' + (!S.katFilter ? 'active' : '') + '" onclick="setKat(null)">\u{1F3EA} Semua</div>';
+  S.kategori.forEach(function(k) {
+    var isActive = S.katFilter === k.id;
+    var subs = subKats.filter(function(s) { return s.katId === k.id; });
+    var activeStyle = 'background:' + k.warna + ';border-color:' + k.warna;
+    var inactiveStyle = 'border-color:' + k.warna + ';color:' + k.warna;
+    pills += '<div class="kat-pill ' + (isActive && !S.subKatFilter ? 'active' : '') + '" style="' + (isActive ? activeStyle : inactiveStyle) + '" onclick="setKat(\'' + k.id + '\')">' + k.nama + (subs.length ? ' (' + subs.length + ')' : '') + '</div>';
+    if (isActive && subs.length) {
+      subs.forEach(function(s) {
+        pills += '<div class="kat-pill ' + (S.subKatFilter === s.id ? 'active' : '') + '" style="font-size:0.72rem;padding:4px 10px;margin-left:8px;' + (S.subKatFilter === s.id ? activeStyle : inactiveStyle) + '" onclick="setSubKat(\'' + s.id + '\',event)">› ' + s.nama + '</div>';
+      });
+    }
+  });
+  el.innerHTML = pills;
 }
 
 function setKat(id) { S.katFilter = id; S.subKatFilter = null; renderKatBar(); renderGrid(); }
-function setSubKat(id, e) { e && e.stopPropagation(); S.subKatFilter = (S.subKatFilter===id) ? null : id; renderKatBar(); renderGrid(); }
+function setSubKat(id, e) { if(e) e.stopPropagation(); S.subKatFilter = (S.subKatFilter===id) ? null : id; renderKatBar(); renderGrid(); }
 
 function renderKatFilter() {
   const s = document.getElementById('produk-kat-filter');
@@ -2808,7 +2813,7 @@ async function saveProduk() {
   const stokMin = parseInt(document.getElementById('p-stok-min').value) || 5;
   const kode = document.getElementById('p-kode').value.trim();
   const katId = document.getElementById('p-kat').value || null;
-  const subKatId = document.getElementById('p-subkat').value || null;
+  const subKatId = document.getElementById('p-subkat')?.value || null;
   const stokAktif = document.getElementById('p-stok-aktif').value === '1';
   const varianStr = document.getElementById('p-varian')?.value || '';
   const toppingStr = document.getElementById('p-topping')?.value || '';
@@ -3572,61 +3577,100 @@ function closeStrukReset() {
 }
 
 
-// ── Sub Kategori helpers
-function renderSubKatSelect(selectedSubKatId) {
-  const katId = document.getElementById('p-kat').value;
-  const subs = (S.subKategori||[]).filter(s => s.katId === katId);
-  const sel = document.getElementById('p-subkat');
+// ── SUB KATEGORI ──
+function renderSubKatSelect(selectedId) {
+  var katId = document.getElementById('p-kat').value;
+  var subs = (S.subKategori||[]).filter(function(s){return s.katId===katId;});
+  var sel = document.getElementById('p-subkat');
+  if (!sel) return;
   sel.innerHTML = '<option value="">— Tidak ada —</option>' +
-    subs.map(s => `<option value="${s.id}" ${s.id===selectedSubKatId?'selected':''}>${s.nama}</option>`).join('');
+    subs.map(function(s){return '<option value="'+s.id+'"'+(s.id===selectedId?' selected':'')+'>'+s.nama+'</option>';}).join('');
 }
-
-function addSubKat() {
-  const katId = document.getElementById('manage-kat-select').value;
-  const nama = document.getElementById('manage-subkat-nama').value.trim();
-  if (!katId) { showToast('Pilih kategori dulu'); return; }
-  if (!nama) { showToast('Nama sub kategori wajib diisi'); return; }
-  if (!S.subKategori) S.subKategori = [];
-  const id = 'sk' + Date.now();
-  S.subKategori.push({ id, nama, katId });
-  save();
-  document.getElementById('manage-subkat-nama').value = '';
-  renderManageSubKat();
-  showToast('✅ Sub kategori ditambahkan');
-}
-
-function hapusSubKat(id) {
-  if (!confirm('Hapus sub kategori ini?')) return;
-  S.subKategori = (S.subKategori||[]).filter(s => s.id !== id);
-  // Reset produk yang pakai sub kat ini
-  S.produk.forEach(p => { if (p.subKatId === id) p.subKatId = null; });
-  save();
-  renderManageSubKat();
-  showToast('🗑️ Sub kategori dihapus');
-}
-
-function renderManageSubKat() {
-  const katId = document.getElementById('manage-kat-select').value;
-  const subs = (S.subKategori||[]).filter(s => s.katId === katId);
-  const wrap = document.getElementById('manage-subkat-list');
-  if (!wrap) return;
-  wrap.innerHTML = subs.length
-    ? subs.map(s => `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:0.82rem">↳ ${s.nama}</span><button class="btn btn-danger btn-sm" onclick="hapusSubKat('${s.id}')">Hapus</button></div>`).join('')
-    : '<div style="font-size:0.78rem;color:var(--ink3);padding:8px 0">Belum ada sub kategori</div>';
-}
-
 
 function openSubKatModal() {
-  const sel = document.getElementById('manage-kat-select');
+  var sel = document.getElementById('manage-kat-select');
   if (!sel) return;
   sel.innerHTML = '<option value="">Pilih Kategori...</option>' +
-    S.kategori.map(k => '<option value="'+k.id+'">'+k.nama+'</option>').join('');
-  document.getElementById('manage-subkat-list').innerHTML = '<div style="font-size:0.78rem;color:var(--ink3);padding:8px 0">Pilih kategori dulu</div>';
-  document.getElementById('manage-subkat-nama').value = '';
+    S.kategori.map(function(k){return '<option value="'+k.id+'">'+k.nama+'</option>';}).join('');
+  var list = document.getElementById('manage-subkat-list');
+  if (list) list.innerHTML = '<div style="font-size:0.78rem;color:var(--ink3);padding:8px 0">Pilih kategori dulu</div>';
+  var inp = document.getElementById('manage-subkat-nama');
+  if (inp) inp.value = '';
   openModal('modal-subkat');
 }
 
+function renderManageSubKat() {
+  var katId = document.getElementById('manage-kat-select').value;
+  var subs = (S.subKategori||[]).filter(function(s){return s.katId===katId;});
+  var wrap = document.getElementById('manage-subkat-list');
+  if (!wrap) return;
+  if (!katId) { wrap.innerHTML = '<div style="font-size:0.78rem;color:var(--ink3);padding:8px 0">Pilih kategori dulu</div>'; return; }
+  if (!subs.length) { wrap.innerHTML = '<div style="font-size:0.78rem;color:var(--ink3);padding:8px 0">Belum ada sub kategori</div>'; return; }
+  var rows = '';
+  subs.forEach(function(s) {
+    var btn = document.createElement('button');
+    btn.className = 'btn btn-danger btn-sm';
+    btn.textContent = 'Hapus';
+    btn.setAttribute('data-id', s.id);
+    rows += '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)" data-subkat="'+s.id+'"><span style="font-size:0.82rem">› '+s.nama+'</span><button class="btn btn-danger btn-sm" data-id="'+s.id+'">Hapus</button></div>';
+  });
+  wrap.innerHTML = rows;
+  wrap.querySelectorAll('[data-id]').forEach(function(btn) {
+    btn.onclick = function() { hapusSubKat(btn.getAttribute('data-id')); };
+  });
+}
+
+async function addSubKat() {
+  var katId = document.getElementById('manage-kat-select').value;
+  var nama = document.getElementById('manage-subkat-nama').value.trim();
+  if (!katId) { showToast('Pilih kategori dulu'); return; }
+  if (!nama) { showToast('Nama sub kategori wajib diisi'); return; }
+  if (!S.subKategori) S.subKategori = [];
+  S.subKategori.push({ id: 'sk'+Date.now(), nama: nama, katId: katId });
+  await save();
+  document.getElementById('manage-subkat-nama').value = '';
+  renderManageSubKat();
+  renderKatBar();
+  showToast('Sub kategori ditambahkan');
+}
+
+async function hapusSubKat(id) {
+  if (!confirm('Hapus sub kategori ini?')) return;
+  S.subKategori = (S.subKategori||[]).filter(function(s){return s.id!==id;});
+  S.produk.forEach(function(p){if(p.subKatId===id) p.subKatId=null;});
+  await save();
+  renderManageSubKat();
+  renderKatBar();
+  showToast('Sub kategori dihapus');
+}
+
 </script>
+
+<div class="modal-overlay" id="modal-subkat">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">Sub Kategori</div>
+      <button class="modal-close" onclick="closeModal('modal-subkat')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Kategori Induk</label>
+        <select id="manage-kat-select" onchange="renderManageSubKat()" style="width:100%">
+          <option value="">Pilih Kategori...</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input type="text" id="manage-subkat-nama" placeholder="Nama sub kategori" style="flex:1">
+        <button class="btn btn-primary" onclick="addSubKat()">+ Tambah</button>
+      </div>
+      <div id="manage-subkat-list" style="font-size:0.82rem;color:var(--ink3);min-height:40px">Pilih kategori dulu</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeModal('modal-subkat')">Selesai</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- ══ GANTI PASSWORD MODAL ══ -->
 <div class="modal-overlay" id="modal-ganti-password">

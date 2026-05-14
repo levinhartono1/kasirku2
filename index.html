@@ -723,7 +723,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
       <div class="nav-dd-menu">
         <div class="dd-item" onclick="showPage('riwayat',document.getElementById('dd-laporan'));closeAllDropdowns()">🧾 Riwayat Transaksi</div>
         <div class="dd-item" onclick="showPage('laporan',document.getElementById('dd-laporan'));closeAllDropdowns()">📄 Laporan Keuangan</div>
-        <div class="dd-item" onclick="window.location.href='laporan.html'">📊 Analitik & Grafik</div>
         <div class="dd-item" onclick="exportCSV();closeAllDropdowns()">⬇️ Export CSV</div>
       </div>
     </div>
@@ -904,6 +903,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
       </div>
       <div class="btn-group">
         <button class="btn" onclick="openKatModal()">+ Kategori</button>
+        <button class="btn" onclick="openSubKatModal()">↳ Sub Kategori</button>
         <button class="btn btn-primary" onclick="openProdukModal()">+ Produk Baru</button>
       </div>
     </div>
@@ -1113,7 +1113,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
         <div class="form-group"><label class="form-label">Stok Minimum Alert</label><input type="number" id="p-stok-min" placeholder="5" min="0"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Kategori</label><select id="p-kat"></select></div>
+        <div class="form-group"><label class="form-label">Kategori</label><select id="p-kat" onchange="renderSubKatSelect()"></select></div>
+        <div class="form-group"><label class="form-label">Sub Kategori <span style="font-size:0.7rem;color:var(--ink3)">(opsional)</span></label><select id="p-subkat"><option value="">— Tidak ada —</option></select></div>
         <div class="form-group"><label class="form-label">Kode / SKU</label><input type="text" id="p-kode" placeholder="SKU-001"></div>
       </div>
       <div class="form-group">
@@ -1203,6 +1204,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
     </div>
     <div class="modal-body" id="modal-detail-body"></div>
     <div class="modal-footer">
+      <button class="btn" style="font-size:0.78rem;padding:6px 8px" onclick="printDetailTrx('80mm')">🖨 80mm</button>
+      <button class="btn" style="font-size:0.78rem;padding:6px 8px" onclick="printDetailTrx('58mm')">🖨 58mm</button>
+      <button class="btn" style="font-size:0.78rem;padding:6px 8px" onclick="printDetailTrx('a4')">🖨 A4</button>
       <button class="btn btn-primary" onclick="closeModal('modal-detail')">Tutup</button>
     </div>
   </div>
@@ -1319,6 +1323,7 @@ let S = {
   cart: [],
   metode: 'tunai',
   katFilter: null,
+  subKatFilter: null,
   editProdukId: null,
   selectedColor: '#d4450c',
 };
@@ -1420,11 +1425,21 @@ function getKat(id) { return S.kategori.find(k => k.id === id) || { nama: '—',
 // ══════════════════════════════════════════════════
 function renderKatBar() {
   const el = document.getElementById('kat-bar');
-  el.innerHTML = `<div class="kat-pill ${!S.katFilter?'active':''}" onclick="setKat(null)">🏪 Semua</div>` +
-    S.kategori.map(k => `<div class="kat-pill ${S.katFilter===k.id?'active':''}" style="${S.katFilter===k.id?`background:${k.warna};border-color:${k.warna}`:'border-color:'+k.warna+';color:'+k.warna}" onclick="setKat('${k.id}')">${k.nama}</div>`).join('');
+  const subKats = (S.subKategori||[]).filter(s => s.katId === S.katFilter);
+  el.innerHTML = 
+    `<div class="kat-pill ${!S.katFilter&&!S.subKatFilter?'active':''}" onclick="setKat(null)">🏪 Semua</div>` +
+    S.kategori.map(k => {
+      const isActive = S.katFilter === k.id;
+      const subs = (S.subKategori||[]).filter(s => s.katId === k.id);
+      return `<div class="kat-pill ${isActive&&!S.subKatFilter?'active':''}" style="${isActive?`background:${k.warna};border-color:${k.warna}`:'border-color:'+k.warna+';color:'+k.warna}" onclick="setKat('${k.id}')">${k.nama}${subs.length?` (${subs.length})`:''}</div>` +
+        (isActive && subs.length ? subs.map(s =>
+          `<div class="kat-pill ${S.subKatFilter===s.id?'active':''}" style="font-size:0.72rem;padding:4px 10px;margin-left:8px;${S.subKatFilter===s.id?`background:${k.warna};border-color:${k.warna}`:'border-color:'+k.warna+';color:'+k.warna}" onclick="setSubKat('${s.id}',event)">↳ ${s.nama}</div>`
+        ).join('') : '');
+    }).join('');
 }
 
-function setKat(id) { S.katFilter = id; renderKatBar(); renderGrid(); }
+function setKat(id) { S.katFilter = id; S.subKatFilter = null; renderKatBar(); renderGrid(); }
+function setSubKat(id, e) { e && e.stopPropagation(); S.subKatFilter = (S.subKatFilter===id) ? null : id; renderKatBar(); renderGrid(); }
 
 function renderKatFilter() {
   const s = document.getElementById('produk-kat-filter');
@@ -1480,7 +1495,8 @@ function renderGrid() {
   let list = S.produk.filter(p => {
     const mq = !q || p.nama.toLowerCase().includes(q) || (p.kode||'').toLowerCase().includes(q);
     const mk = !S.katFilter || p.katId === S.katFilter;
-    return mq && mk;
+    const ms = !S.subKatFilter || p.subKatId === S.subKatFilter;
+    return mq && mk && ms;
   });
 
   const el = document.getElementById('produk-grid');
@@ -1658,25 +1674,65 @@ function renderCart() {
 function showDetailTrx(id) {
   const t = S.transaksi.find(x=>x.id===id);
   if (!t) return;
+  const tk = S.toko || {};
   const laba = t.total - (t.modal||0);
+  const tgl = new Date(t.tgl).toLocaleString('id-ID', { dateStyle:'medium', timeStyle:'short' });
   document.getElementById('modal-detail-body').innerHTML = `
-    <div class="struk">
+    <div id="detail-struk-content">
       <div class="struk-header">
-        <div class="struk-toko">${S.toko.nama}</div>
-        <div style="font-size:0.72rem;color:var(--ink3)">${fmtTime(t.tgl)} · ${t.noStruk}</div>
+        <div class="struk-toko">${tk.nama||'Toko'}</div>
+        ${tk.alamat?`<div style="font-size:0.72rem;color:var(--ink3)">${tk.alamat}</div>`:''}
+        ${tk.telp?`<div style="font-size:0.72rem;color:var(--ink3)">${tk.telp}</div>`:''}
       </div>
       <hr class="struk-divider">
-      ${t.items.map(i=>`<div class="struk-row"><span>${i.nama} ×${i.qty}</span><span>${fmt(i.harga*i.qty)}</span></div>`).join('')}
+      <div class="struk-row" style="font-size:0.72rem;color:var(--ink3)"><span>${tgl}</span><span>${t.noStruk}</span></div>
+      <div class="struk-row" style="font-size:0.72rem;color:var(--ink3)"><span>Kasir: ${t.kasir||tk.kasir||'-'}</span>${t.pelangganNama?`<span>👤 ${t.pelangganNama}</span>`:''}</div>
+      <hr class="struk-divider">
+      ${t.items.map(i=>`
+        <div class="struk-row"><span>${i.nama} ×${i.qty}</span><span>${fmt(i.harga*i.qty)}</span></div>
+        ${i.varian?`<div style="font-size:0.72rem;color:var(--ink3);padding-left:8px">→ ${i.varian}</div>`:''}
+        ${(i.topping||[]).length?`<div style="font-size:0.72rem;color:var(--ink3);padding-left:8px">+ ${i.topping.join(', ')}</div>`:''}
+      `).join('')}
       <hr class="struk-divider">
       ${t.diskon?`<div class="struk-row"><span>Diskon</span><span>-${fmt(t.diskon)}</span></div>`:''}
+      ${t.ppn?`<div class="struk-row"><span>PPN</span><span>${fmt(t.ppn)}</span></div>`:''}
+      ${t.service?`<div class="struk-row"><span>Service</span><span>${fmt(t.service)}</span></div>`:''}
       <div class="struk-total"><span>TOTAL</span><span>${fmt(t.total)}</span></div>
       <div class="struk-row"><span>Bayar (${t.metode})</span><span>${fmt(t.bayar)}</span></div>
       ${t.kembalian>0?`<div class="struk-row"><span>Kembalian</span><span>${fmt(t.kembalian)}</span></div>`:''}
       <hr class="struk-divider">
-      <div class="struk-row"><span>Modal</span><span>${fmt(t.modal||0)}</span></div>
+      <div class="struk-row" style="font-size:0.75rem"><span>Modal</span><span>${fmt(t.modal||0)}</span></div>
       <div class="struk-row" style="font-weight:700;color:${laba>=0?'var(--green)':'var(--red)'}"><span>Laba</span><span>${fmt(laba)}</span></div>
+      ${tk.footer?`<hr class="struk-divider"><div class="struk-footer">${tk.footer}</div>`:''}
     </div>`;
   openModal('modal-detail');
+}
+
+function printDetailTrx(ukuran) {
+  const content = document.getElementById('detail-struk-content');
+  if (!content) return;
+  const css = `body{font-family:'Courier New',monospace;font-size:12px;padding:16px;max-width:320px;margin:0 auto}
+    hr{border:none;border-top:1px dashed #999;margin:6px 0}
+    .struk-row{display:flex;justify-content:space-between;margin:2px 0}
+    .struk-total{display:flex;justify-content:space-between;font-weight:bold;font-size:13px;margin:4px 0}
+    .struk-header{text-align:center;margin-bottom:8px}
+    .struk-toko{font-size:15px;font-weight:bold}
+    .struk-footer{text-align:center;font-size:10px;color:#666;margin-top:8px}`;
+  if (ukuran === 'a4') {
+    const w = window.open('','_blank','width=600,height:700');
+    w.document.write('<html><head><style>' + css + '</style></head><body>' + content.innerHTML + '</body></html>');
+    w.document.close();
+    setTimeout(() => { w.print(); w.close(); }, 400);
+  } else {
+    const lebar = ukuran === '58mm' ? '58mm' : '80mm';
+    const frame = document.getElementById('print-frame');
+    frame.style.display = 'block';
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    doc.open();
+    doc.write('<html><head><style>@page{size:' + lebar + ' auto;margin:4mm}' + css + '</style></head><body>' + content.innerHTML + '</body></html>');
+    doc.close();
+    setTimeout(() => { frame.contentWindow.focus(); frame.contentWindow.print(); frame.style.display = 'none'; }, 300);
+  }
 }
 
 // ══════════════════════════════════════════════════
@@ -2752,6 +2808,7 @@ async function saveProduk() {
   const stokMin = parseInt(document.getElementById('p-stok-min').value) || 5;
   const kode = document.getElementById('p-kode').value.trim();
   const katId = document.getElementById('p-kat').value || null;
+  const subKatId = document.getElementById('p-subkat').value || null;
   const stokAktif = document.getElementById('p-stok-aktif').value === '1';
   const varianStr = document.getElementById('p-varian')?.value || '';
   const toppingStr = document.getElementById('p-topping')?.value || '';
@@ -3137,32 +3194,10 @@ function showStrukAutoReset(trx) {
   const footer = overlay.querySelector('.modal-footer');
   if (footer) {
     footer.innerHTML = `
-      <div style="flex:1">
-        <div style="font-size:0.72rem;color:var(--ink3);margin-bottom:4px">Auto tutup dalam <span id="countdown">4</span> detik...</div>
-        <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden">
-          <div id="countdown-bar" style="height:3px;width:100%;background:var(--primary);border-radius:2px;transition:width 4s linear"></div>
-        </div>
-      </div>
       <button class="btn" style="font-size:0.78rem;padding:6px 8px" onclick="printStrukThermal('80mm')">🖨 80mm</button>
       <button class="btn" style="font-size:0.78rem;padding:6px 8px" onclick="printStrukThermal('58mm')">🖨 58mm</button>
       <button class="btn" style="font-size:0.78rem;padding:6px 8px" onclick="printStruk()">🖨 A4</button>
-      <button class="btn btn-primary" onclick="closeStrukAndReset()">Tutup</button>`;
-    setTimeout(() => {
-      const bar = document.getElementById('countdown-bar');
-      if (bar) bar.style.width = '0%';
-    }, 50);
-    let sisa = 4;
-    const interval = setInterval(() => {
-      sisa--;
-      const cd = document.getElementById('countdown');
-      if (cd) cd.textContent = sisa;
-      if (sisa <= 0) {
-        clearInterval(interval);
-        closeStrukAndReset();
-      }
-    }, 1000);
-    // Store interval ID so manual close can clear it
-    overlay._countdownInterval = interval;
+      <button class="btn btn-primary" onclick="closeStrukAndReset()">✓ Tutup</button>`;
   }
 }
 
@@ -3350,6 +3385,7 @@ if (!S.pembelian) S.pembelian = [];
 if (!S.shiftHistory) S.shiftHistory = [];
 if (!S.holdOrders) S.holdOrders = {};
 if (!S.setting) S.setting = { ppn: 0, service: 0, poinRate: 1, poinRedeem: 100 };
+if (!S.subKategori) S.subKategori = [];
 S.produk = S.produk.map(p => ({ varian: [], topping: [], ...p }));
 
 renderKatBar();
@@ -3533,6 +3569,61 @@ function closeStrukReset() {
   clearCart();
   renderGrid();
   showToast('✓ Transaksi berhasil!');
+}
+
+
+// ── Sub Kategori helpers
+function renderSubKatSelect(selectedSubKatId) {
+  const katId = document.getElementById('p-kat').value;
+  const subs = (S.subKategori||[]).filter(s => s.katId === katId);
+  const sel = document.getElementById('p-subkat');
+  sel.innerHTML = '<option value="">— Tidak ada —</option>' +
+    subs.map(s => `<option value="${s.id}" ${s.id===selectedSubKatId?'selected':''}>${s.nama}</option>`).join('');
+}
+
+function addSubKat() {
+  const katId = document.getElementById('manage-kat-select').value;
+  const nama = document.getElementById('manage-subkat-nama').value.trim();
+  if (!katId) { showToast('Pilih kategori dulu'); return; }
+  if (!nama) { showToast('Nama sub kategori wajib diisi'); return; }
+  if (!S.subKategori) S.subKategori = [];
+  const id = 'sk' + Date.now();
+  S.subKategori.push({ id, nama, katId });
+  save();
+  document.getElementById('manage-subkat-nama').value = '';
+  renderManageSubKat();
+  showToast('✅ Sub kategori ditambahkan');
+}
+
+function hapusSubKat(id) {
+  if (!confirm('Hapus sub kategori ini?')) return;
+  S.subKategori = (S.subKategori||[]).filter(s => s.id !== id);
+  // Reset produk yang pakai sub kat ini
+  S.produk.forEach(p => { if (p.subKatId === id) p.subKatId = null; });
+  save();
+  renderManageSubKat();
+  showToast('🗑️ Sub kategori dihapus');
+}
+
+function renderManageSubKat() {
+  const katId = document.getElementById('manage-kat-select').value;
+  const subs = (S.subKategori||[]).filter(s => s.katId === katId);
+  const wrap = document.getElementById('manage-subkat-list');
+  if (!wrap) return;
+  wrap.innerHTML = subs.length
+    ? subs.map(s => `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:0.82rem">↳ ${s.nama}</span><button class="btn btn-danger btn-sm" onclick="hapusSubKat('${s.id}')">Hapus</button></div>`).join('')
+    : '<div style="font-size:0.78rem;color:var(--ink3);padding:8px 0">Belum ada sub kategori</div>';
+}
+
+
+function openSubKatModal() {
+  const sel = document.getElementById('manage-kat-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Pilih Kategori...</option>' +
+    S.kategori.map(k => '<option value="'+k.id+'">'+k.nama+'</option>').join('');
+  document.getElementById('manage-subkat-list').innerHTML = '<div style="font-size:0.78rem;color:var(--ink3);padding:8px 0">Pilih kategori dulu</div>';
+  document.getElementById('manage-subkat-nama').value = '';
+  openModal('modal-subkat');
 }
 
 </script>

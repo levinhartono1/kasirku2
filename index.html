@@ -707,7 +707,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
         <div class="dd-item" onclick="openBeliModal();closeAllDropdowns()">➕ Catat Pembelian</div>
         <div class="dd-divider"></div>
         <div class="dd-item" onclick="showPage('kat-manager',document.getElementById('dd-inventori'));closeAllDropdowns()">🏷️ Daftar Kategori</div>
-        <div class="dd-item" onclick="openSubKatModal();closeAllDropdowns()">↳ Daftar Sub Kategori</div>
+        <div class="dd-item" onclick="showPage('kat-manager',document.getElementById('dd-inventori'));closeAllDropdowns()">↳ Daftar Sub Kategori</div>
       </div>
     </div>
 
@@ -724,6 +724,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
       <div class="nav-dd-menu">
         <div class="dd-item" onclick="showPage('riwayat',document.getElementById('dd-laporan'));closeAllDropdowns()">🧾 Riwayat Transaksi</div>
         <div class="dd-item" onclick="showPage('laporan',document.getElementById('dd-laporan'));closeAllDropdowns()">📄 Laporan Keuangan</div>
+        <div class="dd-item" onclick="window.location.href='laporan.html'">📊 Analitik & Grafik</div>
         <div class="dd-item" onclick="exportCSV();closeAllDropdowns()">⬇️ Export CSV</div>
       </div>
     </div>
@@ -1098,7 +1099,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
 <!-- MODALS -->
 
 <!-- ══ PAGE: DAFTAR KATEGORI ══ -->
-<div class="page" data-page="kat-manager" style="display:none">
+<div class="page" id="page-kat-manager" data-page="kat-manager" style="display:none">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
     <div>
       <div class="page-title">🏷️ Daftar Kategori</div>
@@ -1384,6 +1385,9 @@ function load() {
       const saved = JSON.parse(raw);
       S = { ...S, ...saved, cart: [], editProdukId: null, metode: 'tunai', katFilter: null, selectedColor: '#d4450c' };
       if (saved.nextId) nextId = saved.nextId;
+      // Ensure new fields exist after load
+      if (!S.subKategori) S.subKategori = [];
+      if (!S.subKatFilter) S.subKatFilter = null;
     }
   } catch(e) {}
 }
@@ -2901,6 +2905,7 @@ function showPage(id, el) {
     shift: () => { renderShift(); renderShiftHistory(); },
     supplier: renderSupplier,
     setting: renderSetting,
+    'kat-manager': () => { renderKatManager(); },
   };
   if (actions[id]) actions[id]();
 }

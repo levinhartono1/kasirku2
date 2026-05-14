@@ -1165,7 +1165,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
     </div>
     <div class="modal-body"><div class="struk" id="struk-content"></div></div>
     <div class="modal-footer">
-      <button class="btn" onclick="printStruk()">🖨 Cetak Struk</button>
+      <button class="btn" onclick="printStrukThermal('80mm')" style="font-size:0.8rem">🖨 80mm</button>
+      <button class="btn" onclick="printStrukThermal('58mm')" style="font-size:0.8rem">🖨 58mm</button>
+      <button class="btn" onclick="printStruk()" style="font-size:0.8rem">🖨 A4</button>
       <button class="btn btn-primary" onclick="closeStrukReset()">✓ Transaksi Baru</button>
     </div>
   </div>
@@ -3112,7 +3114,9 @@ function showStrukAutoReset(trx) {
           <div id="countdown-bar" style="height:3px;width:100%;background:var(--primary);border-radius:2px;transition:width 4s linear"></div>
         </div>
       </div>
-      <button class="btn" onclick="printStruk()">🖨 Cetak</button>
+      <button class="btn" style="font-size:0.78rem;padding:6px 8px" onclick="printStrukThermal('80mm')">🖨 80mm</button>
+      <button class="btn" style="font-size:0.78rem;padding:6px 8px" onclick="printStrukThermal('58mm')">🖨 58mm</button>
+      <button class="btn" style="font-size:0.78rem;padding:6px 8px" onclick="printStruk()">🖨 A4</button>
       <button class="btn btn-primary" onclick="closeStrukAndReset()">Tutup</button>`;
     setTimeout(() => {
       const bar = document.getElementById('countdown-bar');
@@ -3441,23 +3445,50 @@ updateOnlineStatus();
 function printStrukThermal(ukuran) {
   const content = document.getElementById('struk-content').innerHTML;
   const lebar = ukuran === '58mm' ? '58mm' : '80mm';
-  const printArea = document.getElementById('print-area');
-  
-  // Inject custom page size
-  let styleEl = document.getElementById('print-styles');
-  styleEl.textContent = styleEl.textContent.replace(/size: \d+mm auto/, 'size: ' + lebar + ' auto');
-  
-  printArea.innerHTML = `<div style="width:${lebar};padding:4px;font-family:'Courier New',monospace;font-size:${ukuran==='58mm'?'11px':'12px'}">${content}</div>`;
-  window.print();
-  printArea.innerHTML = '';
+  const fontSize = ukuran === '58mm' ? '11px' : '12px';
+  const css = `@page{size:${lebar} auto;margin:4mm}
+    body{font-family:'Courier New',monospace;font-size:${fontSize};width:${lebar};margin:0;padding:0}
+    hr{border:none;border-top:1px dashed #000;margin:4px 0}
+    .struk-row{display:flex;justify-content:space-between}
+    .struk-total{display:flex;justify-content:space-between;font-weight:bold}
+    .struk-header{text-align:center;margin-bottom:6px}
+    .struk-toko{font-size:13px;font-weight:bold}
+    .struk-footer{text-align:center;font-size:9px;margin-top:6px}`;
+  const frame = document.getElementById('print-frame');
+  frame.style.display = 'block';
+  const doc = frame.contentDocument || frame.contentWindow.document;
+  doc.open();
+  doc.write('<html><head><style>' + css + '</style></head><body>' + content + '</body></html>');
+  doc.close();
+  setTimeout(() => {
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+    frame.style.display = 'none';
+  }, 300);
 }
 
 
 // ── Fungsi yang dibutuhkan HTML ──
 function printStruk() {
-  const w = window.open('','_blank');
-  w.document.write(`<html><head><style>body{font-family:monospace;font-size:12px;padding:20px;max-width:280px}hr{border-top:1px dashed #999;margin:8px 0}</style></head><body>${document.getElementById('struk-content').innerHTML}</body></html>`);
-  w.print(); w.close();
+  const content = document.getElementById('struk-content').innerHTML;
+  const css = `body{font-family:'Courier New',monospace;font-size:12px;padding:16px;max-width:320px;margin:0 auto}
+    hr{border:none;border-top:1px dashed #999;margin:6px 0}
+    .struk-row{display:flex;justify-content:space-between}
+    .struk-total{display:flex;justify-content:space-between;font-weight:bold;font-size:13px}
+    .struk-header{text-align:center;margin-bottom:8px}
+    .struk-toko{font-size:15px;font-weight:bold}
+    .struk-footer{text-align:center;font-size:10px;color:#666;margin-top:8px}`;
+  const frame = document.getElementById('print-frame');
+  frame.style.display = 'block';
+  const doc = frame.contentDocument || frame.contentWindow.document;
+  doc.open();
+  doc.write('<html><head><style>' + css + '</style></head><body>' + content + '</body></html>');
+  doc.close();
+  setTimeout(() => {
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+    frame.style.display = 'none';
+  }, 300);
 }
 
 function closeStrukReset() {
@@ -3468,5 +3499,33 @@ function closeStrukReset() {
 }
 
 </script>
+
+<!-- ══ GANTI PASSWORD MODAL ══ -->
+<div class="modal-overlay" id="modal-ganti-password">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title">🔑 Ganti Password</div>
+      <button class="modal-close" onclick="closeModal('modal-ganti-password')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Password Baru</label>
+        <input type="password" id="new-pass1" placeholder="Min. 6 karakter" style="width:100%;box-sizing:border-box">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Konfirmasi Password Baru</label>
+        <input type="password" id="new-pass2" placeholder="Ulangi password baru" style="width:100%;box-sizing:border-box">
+      </div>
+      <div id="pass-msg" style="font-size:0.8rem;min-height:20px;text-align:center;margin-top:4px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-ganti-password')">Batal</button>
+      <button class="btn btn-primary" onclick="doGantiPassword()">Simpan Password</button>
+    </div>
+  </div>
+</div>
+<!-- ══ PRINT IFRAME ══ -->
+<iframe id="print-frame" style="display:none;position:fixed;top:-9999px"></iframe>
+
 </body>
 </html>

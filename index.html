@@ -548,24 +548,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
 }
 
 </style>
-
-<style id="print-styles">
-@media print {
-  body > *:not(#print-area) { display: none !important; }
-  #print-area {
-    display: block !important;
-    position: fixed; inset: 0;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    line-height: 1.5;
-    color: #000;
-    background: #fff;
-  }
-  #print-area .struk-toko { font-size: 14px; font-weight: bold; }
-  @page { margin: 0; size: 80mm auto; }
-}
-#print-area { display: none; }
-</style>
 </head>
 <body>
 <!-- ══════════════════════════════════════════════
@@ -989,14 +971,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
       <button class="btn btn-primary" onclick="saveSetting()">Simpan Pengaturan</button>
     </div>
     <div class="setting-card">
-      <div class="setting-title">🔑 Akun & Keamanan</div>
-      <div style="font-size:0.82rem;color:var(--ink2);margin-bottom:12px" id="setting-email-display"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn" onclick="openModal('modal-ganti-password')">🔑 Ganti Password</button>
-        <button class="btn btn-danger" onclick="doLogout()">↩ Keluar</button>
-      </div>
-    </div>
-    <div class="setting-card">
       <div class="setting-title">💰 Pajak & Biaya Layanan</div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">PPN (%)</label><input type="number" id="set-ppn" placeholder="0 = tidak aktif" min="0" max="100" value="0"></div>
@@ -1175,11 +1149,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
     </div>
     <div class="modal-body"><div class="struk" id="struk-content"></div></div>
     <div class="modal-footer">
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn" onclick="printStrukThermal('80mm')">🖨 80mm</button>
-        <button class="btn" onclick="printStrukThermal('58mm')">🖨 58mm</button>
-        <button class="btn" onclick="printStruk()">🖨 A4</button>
-      </div>
+      <button class="btn" onclick="printStruk()">🖨 Cetak Struk</button>
       <button class="btn btn-primary" onclick="closeStrukReset()">✓ Transaksi Baru</button>
     </div>
   </div>
@@ -1655,70 +1625,7 @@ function closeStrukReset() {
 
 function printStruk() {
   const w = window.open('','_blank');
-  w.document.write(`<html><head><style>body{font-family:monospace;font-size:12px;padding:20px;max-width:280px}hr{border-top:1px dashed #999;margin:8px 0}</style></head><body>${document.getElementById('struk-content').innerHTML}
-<!-- ══ ONBOARDING WIZARD ══ -->
-<div class="modal-overlay" id="modal-onboarding" style="z-index:9999">
-  <div class="modal" style="max-width:440px">
-    <div class="modal-header">
-      <div class="modal-title">👋 Selamat Datang di KasirKu!</div>
-    </div>
-    <div class="modal-body">
-      <p style="color:var(--ink2);font-size:0.85rem;margin-bottom:1.5rem">Lengkapi profil toko kamu dulu supaya struk & laporan tampil dengan benar.</p>
-      <div class="form-group">
-        <label class="form-label">Nama Toko <span style="color:var(--red)">*</span></label>
-        <input type="text" id="ob-nama" placeholder="Warung Bu Ani" style="width:100%;box-sizing:border-box">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Alamat</label>
-        <input type="text" id="ob-alamat" placeholder="Jl. Contoh No. 1" style="width:100%;box-sizing:border-box">
-      </div>
-      <div class="form-group">
-        <label class="form-label">No. Telepon</label>
-        <input type="text" id="ob-telp" placeholder="0812..." style="width:100%;box-sizing:border-box">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Nama Kasir / Operator</label>
-        <input type="text" id="ob-kasir" placeholder="Nama kamu" style="width:100%;box-sizing:border-box">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Pesan Footer Struk</label>
-        <input type="text" id="ob-footer" placeholder="Terima kasih sudah berbelanja!" style="width:100%;box-sizing:border-box">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-primary" style="width:100%" onclick="saveOnboarding()">Mulai Pakai KasirKu →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ GANTI PASSWORD MODAL ══ -
-<div class="modal-overlay" id="modal-ganti-password">
-  <div class="modal" style="max-width:380px">
-    <div class="modal-header">
-      <div class="modal-title">🔑 Ganti Password</div>
-      <button class="modal-close" onclick="closeModal('modal-ganti-password')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Password Baru</label>
-        <input type="password" id="new-pass1" placeholder="Min. 6 karakter" style="width:100%;box-sizing:border-box">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Konfirmasi Password Baru</label>
-        <input type="password" id="new-pass2" placeholder="Ulangi password baru" style="width:100%;box-sizing:border-box">
-      </div>
-      <div id="pass-msg" style="font-size:0.8rem;min-height:20px;text-align:center"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('modal-ganti-password')">Batal</button>
-      <button class="btn btn-primary" onclick="doGantiPassword()">Simpan Password</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ PRINT AREA (hidden, for thermal) ══ -->
-<div id="print-area"></div>
-</body></html>`);
+  w.document.write(`<html><head><style>body{font-family:monospace;font-size:12px;padding:20px;max-width:280px}hr{border-top:1px dashed #999;margin:8px 0}</style></head><body>${document.getElementById('struk-content').innerHTML}</body></html>`);
   w.print(); w.close();
 }
 
@@ -3208,11 +3115,7 @@ function showStrukAutoReset(trx) {
           <div id="countdown-bar" style="height:3px;width:100%;background:var(--primary);border-radius:2px;transition:width 4s linear"></div>
         </div>
       </div>
-      <div style="display:flex;gap:4px">
-        <button class="btn" style="font-size:0.78rem;padding:6px 10px" onclick="printStrukThermal('58mm')">🖨 58mm</button>
-        <button class="btn" style="font-size:0.78rem;padding:6px 10px" onclick="printStrukThermal('80mm')">🖨 80mm</button>
-        <button class="btn" style="font-size:0.78rem;padding:6px 10px" onclick="printStruk()">🖨 A4</button>
-      </div>
+      <button class="btn" onclick="printStruk()">🖨 Cetak</button>
       <button class="btn btn-primary" onclick="closeStrukAndReset()">Tutup</button>`;
     setTimeout(() => {
       const bar = document.getElementById('countdown-bar');
@@ -3388,11 +3291,6 @@ async function onAuthSuccess(user) {
   const userEl = document.getElementById('topbar-user-email');
   if (userEl) userEl.textContent = user.email;
   showToast('✅ Selamat datang!');
-  // Show email di settings
-  const emailEl = document.getElementById('setting-email-display');
-  if (emailEl && user.email) emailEl.textContent = '📧 ' + user.email;
-  // Cek onboarding
-  setTimeout(checkOnboarding, 500);
 }
 
 function doLogout() {
@@ -3448,108 +3346,6 @@ window.addEventListener('resize', () => {
     }
   });
 })();
-
-
-// ══════════════════════════════════════════════════
-//  ONBOARDING
-// ══════════════════════════════════════════════════
-function checkOnboarding() {
-  // Tampilkan wizard kalau nama toko masih default / kosong
-  const nama = S.toko?.nama;
-  if (!nama || nama === 'Toko Saya' || nama === '') {
-    openModal('modal-onboarding');
-  }
-}
-
-function saveOnboarding() {
-  const nama = document.getElementById('ob-nama').value.trim();
-  if (!nama) { showToast('⚠️ Nama toko wajib diisi'); return; }
-  if (!S.toko) S.toko = {};
-  S.toko.nama  = nama;
-  S.toko.alamat = document.getElementById('ob-alamat').value.trim();
-  S.toko.telp   = document.getElementById('ob-telp').value.trim();
-  S.toko.kasir  = document.getElementById('ob-kasir').value.trim();
-  S.toko.footer = document.getElementById('ob-footer').value.trim() || 'Terima kasih sudah berbelanja!';
-  save();
-  document.getElementById('toko-nama-top') && (document.getElementById('toko-nama-top').textContent = '🏪 ' + S.toko.nama);
-  closeModal('modal-onboarding');
-  showToast('✅ Profil toko tersimpan!');
-}
-
-// ══════════════════════════════════════════════════
-//  GANTI PASSWORD
-// ══════════════════════════════════════════════════
-async function doGantiPassword() {
-  const p1 = document.getElementById('new-pass1').value;
-  const p2 = document.getElementById('new-pass2').value;
-  const msg = document.getElementById('pass-msg');
-  if (p1.length < 6) { msg.style.color='var(--red)'; msg.textContent='Password minimal 6 karakter'; return; }
-  if (p1 !== p2) { msg.style.color='var(--red)'; msg.textContent='Password tidak cocok'; return; }
-  msg.style.color='var(--ink2)'; msg.textContent='Menyimpan...';
-  const { error } = await sb.auth.updateUser({ password: p1 });
-  if (error) {
-    msg.style.color='var(--red)'; msg.textContent=error.message;
-  } else {
-    closeModal('modal-ganti-password');
-    document.getElementById('new-pass1').value='';
-    document.getElementById('new-pass2').value='';
-    showToast('✅ Password berhasil diubah!');
-  }
-}
-
-// ══════════════════════════════════════════════════
-//  OFFLINE DETECTION
-// ══════════════════════════════════════════════════
-let offlineBanner = null;
-function createOfflineBanner() {
-  const b = document.createElement('div');
-  b.id = 'offline-banner';
-  b.style.cssText = `
-    position:fixed;top:0;left:0;right:0;z-index:99998;
-    background:#c92a2a;color:#fff;
-    text-align:center;padding:8px;font-size:0.8rem;font-weight:600;
-    font-family:var(--sans);display:none;
-  `;
-  b.innerHTML = '⚠️ Tidak ada koneksi internet — data tersimpan lokal, akan sync otomatis saat online';
-  document.body.appendChild(b);
-  return b;
-}
-
-function updateOnlineStatus() {
-  if (!offlineBanner) offlineBanner = createOfflineBanner();
-  if (!navigator.onLine) {
-    offlineBanner.style.display = 'block';
-  } else {
-    offlineBanner.style.display = 'none';
-    // Re-sync saat balik online
-    if (currentTokoId) {
-      const cache = localStorage.getItem(LS_CACHE);
-      if (cache) syncToSupabase(JSON.parse(cache));
-    }
-  }
-}
-
-window.addEventListener('online', updateOnlineStatus);
-window.addEventListener('offline', updateOnlineStatus);
-updateOnlineStatus();
-
-// ══════════════════════════════════════════════════
-//  THERMAL PRINT
-// ══════════════════════════════════════════════════
-function printStrukThermal(ukuran) {
-  const content = document.getElementById('struk-content').innerHTML;
-  const lebar = ukuran === '58mm' ? '58mm' : '80mm';
-  const printArea = document.getElementById('print-area');
-  
-  // Inject custom page size
-  let styleEl = document.getElementById('print-styles');
-  styleEl.textContent = styleEl.textContent.replace(/size: \d+mm auto/, 'size: ' + lebar + ' auto');
-  
-  printArea.innerHTML = `<div style="width:${lebar};padding:4px;font-family:'Courier New',monospace;font-size:${ukuran==='58mm'?'11px':'12px'}">${content}</div>`;
-  window.print();
-  printArea.innerHTML = '';
-}
-
 </script>
 </body>
 </html>

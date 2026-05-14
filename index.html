@@ -2922,7 +2922,7 @@ async function saveProduk() {
   const varianStr = document.getElementById('p-varian')?.value || '';
   const toppingStr = document.getElementById('p-topping')?.value || '';
   if (!nama || !harga) { showToast('⚠️ Nama dan harga wajib diisi'); return; }
-  const data = { nama, harga, modal, stok, stokMin, kode: kode || null, katId, stokAktif,
+  const data = { nama, harga, modal, stok, stokMin, kode: kode || null, katId, subKatId, stokAktif,
     varian: parseVarian(varianStr), topping: parseVarian(toppingStr), gambar: document.getElementById('p-gambar')?.value || '' };
   const editId = S.editProdukId;
   if (editId) {

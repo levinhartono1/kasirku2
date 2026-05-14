@@ -1177,7 +1177,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
         <button class="btn btn-primary" onclick="openBeliModal()">+ Catat Pembelian</button>
       </div>
       <div class="table-wrap">
-        <table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Produk</th><th>Qty</th><th>Harga Beli</th><th>Total</th><th>Catatan</th></tr></thead>
+        <table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Produk</th><th>Qty</th><th>Harga Beli</th><th>Total</th><th>Catatan</th><th>Aksi</th></tr></thead>
         <tbody id="supplier-tbody"></tbody></table>
       </div>
     </div>
@@ -1353,16 +1353,27 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
 <!-- BELI STOK MODAL -->
 <div class="modal-overlay" id="modal-beli">
   <div class="modal">
-    <div class="modal-header"><span class="modal-title">Catat Pembelian Stok</span><button class="modal-close" onclick="closeModal('modal-beli')">✕</button></div>
+    <div class="modal-header">
+      <span class="modal-title" id="beli-modal-title">Catat Pembelian Stok</span>
+      <button class="modal-close" onclick="closeModal('modal-beli')">✕</button>
+    </div>
     <div class="modal-body">
+      <input type="hidden" id="beli-edit-id">
       <div class="form-row">
         <div class="form-group"><label class="form-label">Supplier</label><input type="text" id="beli-supplier" placeholder="Nama supplier"></div>
         <div class="form-group"><label class="form-label">Tanggal</label><input type="date" id="beli-tgl"></div>
       </div>
-      <div class="form-group"><label class="form-label">Produk *</label><select id="beli-produk"></select></div>
+      <div class="form-group">
+        <label class="form-label">Produk *</label>
+        <select id="beli-produk"></select>
+        <div id="beli-produk-lock" style="display:none;font-size:0.72rem;color:var(--ink3);margin-top:3px">🔒 Produk tidak bisa diubah saat edit. Hapus & buat baru jika perlu ganti produk.</div>
+      </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Qty *</label><input type="number" id="beli-qty" value="1" min="1"></div>
-        <div class="form-group"><label class="form-label">Harga Beli / Unit (Rp)</label><input type="number" id="beli-harga" value="0" min="0"></div>
+        <div class="form-group">
+          <label class="form-label">Harga Beli / Unit (Rp) *</label>
+          <input type="number" id="beli-harga" placeholder="Wajib diisi" min="1">
+        </div>
       </div>
       <div class="form-group"><label class="form-label">Catatan</label><input type="text" id="beli-catatan" placeholder="Opsional"></div>
     </div>
@@ -3168,7 +3179,10 @@ function renderSupplier() {
   const tb = document.getElementById('supplier-tbody');
   if (!tb) return;
   const list = [...(S.pembelian || [])].reverse();
-  if (!list.length) { tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--ink3);padding:2rem">Belum ada catatan pembelian</td></tr>'; return; }
+  if (!list.length) {
+    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--ink3);padding:2rem">Belum ada catatan pembelian</td></tr>';
+    return;
+  }
   tb.innerHTML = list.map(b => `
     <tr>
       <td style="color:var(--ink3)">${b.tgl}</td>
@@ -3178,38 +3192,107 @@ function renderSupplier() {
       <td style="font-family:var(--mono)">${fmt(b.harga)}</td>
       <td style="font-family:var(--mono);font-weight:700;color:var(--red)">${fmt(b.total)}</td>
       <td style="color:var(--ink3)">${b.catatan || '—'}</td>
+      <td>
+        <div class="btn-group">
+          <button class="btn btn-sm" onclick="openBeliModal('${b.id}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="hapusBeli('${b.id}')">Hapus</button>
+        </div>
+      </td>
     </tr>`).join('');
 }
-function openBeliModal() {
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('beli-tgl').value = today;
-  document.getElementById('beli-supplier').value = '';
-  document.getElementById('beli-qty').value = 1;
-  document.getElementById('beli-harga').value = 0;
-  document.getElementById('beli-catatan').value = '';
-  document.getElementById('beli-produk').innerHTML = S.produk.map(p => `<option value="${p.id}">${p.nama} (stok: ${p.stok})</option>`).join('');
+
+async function hapusBeli(id) {
+  const b = (S.pembelian || []).find(x => x.id === id);
+  if (!b) return;
+  if (!confirm(`Hapus catatan pembelian ${b.produkNama} (×${b.qty})?\nStok produk akan dikurangi ${b.qty}.`)) return;
+  // Kurangi stok
+  const pi = S.produk.findIndex(x => x.id === b.produkId);
+  if (pi >= 0 && S.produk[pi].stokAktif) {
+    S.produk[pi].stok = Math.max(0, (S.produk[pi].stok || 0) - b.qty);
+  }
+  S.pembelian = (S.pembelian || []).filter(x => x.id !== id);
+  await save();
+  renderSupplier(); renderGrid(); renderProdukTable();
+  showToast(`🗑️ Pembelian dihapus, stok ${b.produkNama} dikurangi ${b.qty}`);
+}
+
+function openBeliModal(editId) {
+  const b = editId ? (S.pembelian || []).find(x => x.id === editId) : null;
+  document.getElementById('beli-modal-title').textContent = b ? 'Edit Pembelian' : 'Catat Pembelian Stok';
+  document.getElementById('beli-edit-id').value = editId || '';
+  document.getElementById('beli-tgl').value = b?.tgl || new Date().toISOString().split('T')[0];
+  document.getElementById('beli-supplier').value = b?.supplier || '';
+  document.getElementById('beli-qty').value = b?.qty || 1;
+  document.getElementById('beli-harga').value = b?.harga || '';
+  document.getElementById('beli-catatan').value = b?.catatan || '';
+  document.getElementById('beli-produk').innerHTML = S.produk.map(p =>
+    `<option value="${p.id}" ${p.id === b?.produkId ? 'selected' : ''}>${p.nama} (stok: ${p.stok})</option>`
+  ).join('');
+  // Disable produk select saat edit (agar stok konsisten)
+  document.getElementById('beli-produk').disabled = !!b;
+  document.getElementById('beli-produk-lock').style.display = b ? 'block' : 'none';
   openModal('modal-beli');
 }
+
 async function saveBeli() {
   const produkId = document.getElementById('beli-produk').value;
-  const qty = parseInt(document.getElementById('beli-qty').value) || 1;
+  const qty = parseInt(document.getElementById('beli-qty').value) || 0;
   const harga = parseInt(document.getElementById('beli-harga').value) || 0;
+  const editId = document.getElementById('beli-edit-id').value;
+
+  if (!produkId) { showToast('⚠️ Pilih produk'); return; }
+  if (qty <= 0) { showToast('⚠️ Qty harus lebih dari 0'); return; }
+  if (harga <= 0) { showToast('⚠️ Harga beli wajib diisi'); return; }
+
   const p = S.produk.find(x => x.id === produkId);
   if (!p) return;
   if (!S.pembelian) S.pembelian = [];
-  const beli = {
-    id: genId(),
-    tgl: document.getElementById('beli-tgl').value,
-    supplier: document.getElementById('beli-supplier').value.trim(),
-    produkId, produkNama: p.nama, qty, harga, total: qty * harga,
-    catatan: document.getElementById('beli-catatan').value.trim(),
-  };
-  S.pembelian.push(beli);
-  const i = S.produk.findIndex(x => x.id === produkId);
-  S.produk[i].stok += qty;
-  if (harga > 0) S.produk[i].modal = harga;
-  await save(); closeModal('modal-beli'); renderSupplier(); renderGrid(); renderProdukTable();
-  showToast(`✓ +${qty} stok ${p.nama}`);
+
+  const pi = S.produk.findIndex(x => x.id === produkId);
+
+  if (editId) {
+    // Mode edit — hitung selisih stok
+    const lama = S.pembelian.find(x => x.id === editId);
+    if (!lama) return;
+    const selisihQty = qty - lama.qty;
+    // Update stok dengan selisih
+    if (pi >= 0 && S.produk[pi].stokAktif) {
+      S.produk[pi].stok = Math.max(0, (S.produk[pi].stok || 0) + selisihQty);
+    }
+    // Update modal harga jika berubah
+    if (harga > 0 && pi >= 0) S.produk[pi].modal = harga;
+    // Update record
+    const idx = S.pembelian.findIndex(x => x.id === editId);
+    S.pembelian[idx] = {
+      ...S.pembelian[idx],
+      tgl: document.getElementById('beli-tgl').value,
+      supplier: document.getElementById('beli-supplier').value.trim(),
+      qty, harga, total: qty * harga,
+      catatan: document.getElementById('beli-catatan').value.trim(),
+    };
+    await save();
+    closeModal('modal-beli');
+    renderSupplier(); renderGrid(); renderProdukTable();
+    showToast(`✓ Pembelian diperbarui${selisihQty !== 0 ? `, stok ${selisihQty > 0 ? '+' : ''}${selisihQty}` : ''}`);
+  } else {
+    // Mode tambah baru
+    const beli = {
+      id: genId(),
+      tgl: document.getElementById('beli-tgl').value,
+      supplier: document.getElementById('beli-supplier').value.trim(),
+      produkId, produkNama: p.nama, qty, harga, total: qty * harga,
+      catatan: document.getElementById('beli-catatan').value.trim(),
+    };
+    S.pembelian.push(beli);
+    if (pi >= 0) {
+      S.produk[pi].stok += qty;
+      if (harga > 0) S.produk[pi].modal = harga;
+    }
+    await save();
+    closeModal('modal-beli');
+    renderSupplier(); renderGrid(); renderProdukTable();
+    showToast(`✓ +${qty} stok ${p.nama}`);
+  }
 }
 
 // ══ SHIFT ══

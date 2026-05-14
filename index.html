@@ -1691,7 +1691,7 @@ function printStruk() {
   </div>
 </div>
 
-<!-- ══ GANTI PASSWORD MODAL ══ -->
+<!-- ══ GANTI PASSWORD MODAL ══ -
 <div class="modal-overlay" id="modal-ganti-password">
   <div class="modal" style="max-width:380px">
     <div class="modal-header">
@@ -3208,7 +3208,11 @@ function showStrukAutoReset(trx) {
           <div id="countdown-bar" style="height:3px;width:100%;background:var(--primary);border-radius:2px;transition:width 4s linear"></div>
         </div>
       </div>
-      <button class="btn" onclick="printStruk()">🖨 Cetak</button>
+      <div style="display:flex;gap:4px">
+        <button class="btn" style="font-size:0.78rem;padding:6px 10px" onclick="printStrukThermal('58mm')">🖨 58mm</button>
+        <button class="btn" style="font-size:0.78rem;padding:6px 10px" onclick="printStrukThermal('80mm')">🖨 80mm</button>
+        <button class="btn" style="font-size:0.78rem;padding:6px 10px" onclick="printStruk()">🖨 A4</button>
+      </div>
       <button class="btn btn-primary" onclick="closeStrukAndReset()">Tutup</button>`;
     setTimeout(() => {
       const bar = document.getElementById('countdown-bar');

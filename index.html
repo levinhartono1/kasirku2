@@ -706,9 +706,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
         <div class="dd-item" onclick="showPage('supplier',document.getElementById('dd-inventori'));closeAllDropdowns()">🚚 Stok Masuk</div>
         <div class="dd-item" onclick="openBeliModal();closeAllDropdowns()">➕ Catat Pembelian</div>
         <div class="dd-divider"></div>
-        <div class="dd-item" onclick="showPage('kat-manager',document.getElementById('dd-inventori'));closeAllDropdowns()">🏷️ Daftar Kategori</div>
-        <div class="dd-item" onclick="showPage('kat-manager',document.getElementById('dd-inventori'));closeAllDropdowns()">↳ Daftar Sub Kategori</div>
-      </div>
+        <div class="dd-item" onclick="showPage('kat-manager',document.getElementById('dd-inventori'));closeAllDropdowns()">🏷️ Daftar Kategori</div>      </div>
     </div>
 
     <div class="nav-dropdown">
@@ -3736,8 +3734,9 @@ async function addSubKat() {
   await save();
   document.getElementById('manage-subkat-nama').value = '';
   renderManageSubKat();
+  renderKatManager();
   renderKatBar();
-  showToast('Sub kategori ditambahkan');
+  showToast('✅ Sub kategori ditambahkan');
 }
 
 async function hapusSubKat(id) {
@@ -3746,8 +3745,9 @@ async function hapusSubKat(id) {
   S.produk.forEach(function(p){if(p.subKatId===id) p.subKatId=null;});
   await save();
   renderManageSubKat();
+  renderKatManager();
   renderKatBar();
-  showToast('Sub kategori dihapus');
+  showToast('🗑️ Sub kategori dihapus');
 }
 
 

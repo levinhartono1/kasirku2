@@ -10,16 +10,6 @@
 <meta name="theme-color" content="#1c1a17">
 <meta name="description" content="Aplikasi POS Kasir untuk toko dan stand kecil">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-// ══════════════════════════════════════════════════
-//  SUPABASE CONFIG — GANTI INI!
-// ══════════════════════════════════════════════════
-const SUPABASE_URL = 'https://oqmsqvfcinktqlncjhkp.supabase.co'; // contoh: https://abcxyz.supabase.co
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xbXNxdmZjaW5rdHFsbmNqaGtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Njg3NjIsImV4cCI6MjA5NDE0NDc2Mn0.d0ag3-lzLZJG_h6PhpXGTduBKFjW0BPxp3zwvdm2Rlg';     // eyJhbGci...
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-let currentUser = null;
-let currentTokoId = null;
-</script>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231c1a17'/%3E%3Ctext y='.9em' font-size='80' x='10'%3E🛒%3C/text%3E%3C/svg%3E">
 <title>KasirKu — POS System</title>
@@ -1175,11 +1165,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
     </div>
     <div class="modal-body"><div class="struk" id="struk-content"></div></div>
     <div class="modal-footer">
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn" onclick="printStrukThermal('80mm')">🖨 80mm</button>
-        <button class="btn" onclick="printStrukThermal('58mm')">🖨 58mm</button>
-        <button class="btn" onclick="printStruk()">🖨 A4</button>
-      </div>
+      <button class="btn" onclick="printStruk()">🖨 Cetak Struk</button>
       <button class="btn btn-primary" onclick="closeStrukReset()">✓ Transaksi Baru</button>
     </div>
   </div>
@@ -1274,6 +1260,15 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
 
 <script>
 // ══════════════════════════════════════════════════
+//  SUPABASE CONFIG
+// ══════════════════════════════════════════════════
+const SUPABASE_URL = 'https://oqmsqvfcinktqlncjhkp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xbXNxdmZjaW5rdHFsbmNqaGtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Njg3NjIsImV4cCI6MjA5NDE0NDc2Mn0.d0ag3-lzLZJG_h6PhpXGTduBKFjW0BPxp3zwvdm2Rlg';
+let sb = null;
+let currentUser = null;
+let currentTokoId = null;
+
+// ══════════════════════════════════════════════════
 //  STATE & STORAGE
 // ══════════════════════════════════════════════════
 const LS = 'kasirku_v2';
@@ -1304,6 +1299,11 @@ let S = {
   selectedColor: '#d4450c',
 };
 let nextId = 1000;
+let varianState = { produkId: null, selectedVarian: null, selectedTopping: [] };
+let returTrxId = null;
+let activeMeja = 'umum';
+let mejaOrders = { umum: [] };
+
 
 // ══════════════════════════════════════════════════
 //  SUPABASE SAVE / LOAD
@@ -3109,11 +3109,7 @@ function showStrukAutoReset(trx) {
           <div id="countdown-bar" style="height:3px;width:100%;background:var(--primary);border-radius:2px;transition:width 4s linear"></div>
         </div>
       </div>
-      <div style="display:flex;gap:4px">
-        <button class="btn" style="font-size:0.78rem;padding:6px 10px" onclick="printStrukThermal('58mm')">🖨 58mm</button>
-        <button class="btn" style="font-size:0.78rem;padding:6px 10px" onclick="printStrukThermal('80mm')">🖨 80mm</button>
-        <button class="btn" style="font-size:0.78rem;padding:6px 10px" onclick="printStruk()">🖨 A4</button>
-      </div>
+      <button class="btn" onclick="printStruk()">🖨 Cetak</button>
       <button class="btn btn-primary" onclick="closeStrukAndReset()">Tutup</button>`;
     setTimeout(() => {
       const bar = document.getElementById('countdown-bar');
@@ -3336,6 +3332,8 @@ window.addEventListener('resize', () => {
 
 // ── Check existing session on load
 (async () => {
+  // Init supabase di sini agar CDN sudah pasti loaded
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     await onAuthSuccess(session.user);
@@ -3449,6 +3447,21 @@ function printStrukThermal(ukuran) {
   printArea.innerHTML = `<div style="width:${lebar};padding:4px;font-family:'Courier New',monospace;font-size:${ukuran==='58mm'?'11px':'12px'}">${content}</div>`;
   window.print();
   printArea.innerHTML = '';
+}
+
+
+// ── Fungsi yang dibutuhkan HTML ──
+function printStruk() {
+  const w = window.open('','_blank');
+  w.document.write(`<html><head><style>body{font-family:monospace;font-size:12px;padding:20px;max-width:280px}hr{border-top:1px dashed #999;margin:8px 0}</style></head><body>${document.getElementById('struk-content').innerHTML}</body></html>`);
+  w.print(); w.close();
+}
+
+function closeStrukReset() {
+  closeModal('modal-struk');
+  clearCart();
+  renderGrid();
+  showToast('✓ Transaksi berhasil!');
 }
 
 </script>

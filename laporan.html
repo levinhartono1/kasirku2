@@ -402,8 +402,30 @@ tr:hover td { background: var(--surface); }
 </head>
 <body>
 
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen" style="
+  position:fixed;inset:0;background:#1c1a17;z-index:99999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+">
+  <div style="font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;color:#fff">
+    Kasir<span style="color:#d4450c">Ku</span>
+  </div>
+  <div style="display:flex;gap:6px">
+    <div style="width:8px;height:8px;border-radius:50%;background:#d4450c;animation:bounce 0.8s ease-in-out infinite"></div>
+    <div style="width:8px;height:8px;border-radius:50%;background:#d4450c;animation:bounce 0.8s ease-in-out 0.15s infinite"></div>
+    <div style="width:8px;height:8px;border-radius:50%;background:#d4450c;animation:bounce 0.8s ease-in-out 0.3s infinite"></div>
+  </div>
+  <style>
+    @keyframes bounce {
+      0%,100%{transform:translateY(0);opacity:0.4}
+      50%{transform:translateY(-8px);opacity:1}
+    }
+  </style>
+</div>
+
 <!-- AUTH SCREEN -->
-<div id="auth-screen">
+<div id="auth-screen" style="display:none">
   <div class="auth-box">
     <div class="auth-logo">Kasir<span>Ku</span></div>
     <div class="auth-sub">Masuk untuk lihat laporan toko kamu</div>
@@ -608,6 +630,7 @@ async function onAuth(user) {
   } else {
     S = { transaksi: [], produk: [], kategori: [], pelanggan: [] };
   }
+  document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('main-content').style.display = 'block';
   setFilter('7d', document.querySelector('.filter-btn'));
@@ -1080,6 +1103,10 @@ function destroyChart(id) {
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     await onAuth(session.user);
+  } else {
+    // Tidak ada session — tampilkan login
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
   }
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session) await onAuth(session.user);

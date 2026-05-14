@@ -925,7 +925,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
           <option value="poin">Poin</option>
         </select>
         <button class="btn btn-sm" onclick="resetRiwayat()">Reset</button>
-        <button class="btn btn-danger btn-sm" onclick="if(confirm('Hapus semua riwayat?')){S.transaksi=[];save();renderRiwayat();showToast('🗑️ Riwayat dihapus')}">Hapus Semua</button>
+        <button class="btn btn-danger btn-sm" onclick="if(confirm('Hapus semua riwayat?')){S.transaksi=[];save().then(()=>{renderRiwayat();showToast('🗑️ Riwayat dihapus')})}">Hapus Semua</button>
       </div>
     </div>
     <div class="table-wrap">
@@ -1310,16 +1310,19 @@ let mejaOrders = { umum: [] };
 // ══════════════════════════════════════════════════
 const LS_CACHE = 'kasirku_cache_v2'; // local cache for offline fallback
 
-function save() {
-  // Always cache locally first (instant)
+// ── save() sekarang async — selalu await sebelum toast sukses
+async function save() {
   const payload = { ...S, cart: [], editProdukId: null, nextId };
+  // 1. Simpan lokal dulu (instant, tidak pernah gagal)
   localStorage.setItem(LS_CACHE, JSON.stringify(payload));
-  // Then async sync to Supabase
-  if (currentTokoId) syncToSupabase(payload);
+  // 2. Sync ke Supabase dan TUNGGU selesai
+  if (currentTokoId && currentUser && sb) {
+    await syncToSupabase(payload);
+  }
 }
 
 async function syncToSupabase(payload) {
-  if (!currentTokoId || !currentUser) return;
+  if (!currentTokoId || !currentUser || !sb) return;
   try {
     const { error } = await sb.from('toko_state')
       .update({ state: payload, updated_at: new Date().toISOString() })
@@ -1414,11 +1417,11 @@ function renderKatManager() {
     </div>`).join('');
 }
 
-function hapusKat(id) {
+async function hapusKat(id) {
   if (!confirm('Hapus kategori ini? Produk di kategori ini tidak akan terhapus.')) return;
   S.kategori = S.kategori.filter(k => k.id !== id);
   S.produk = S.produk.map(p => p.katId === id ? { ...p, katId: null } : p);
-  save(); renderKatBar(); renderKatManager(); renderKatFilter();
+  await save(); renderKatBar(); renderKatManager(); renderKatFilter();
   showToast('🗑️ Kategori dihapus');
 }
 
@@ -1436,11 +1439,11 @@ function renderSwatches() {
 
 function selectColor(c) { S.selectedColor = c; renderSwatches(); }
 
-function saveKategori() {
+async function saveKategori() {
   const nama = document.getElementById('kat-nama').value.trim();
   if (!nama) { showToast('⚠️ Nama kategori wajib'); return; }
   S.kategori.push({ id: 'k' + genId(), nama, warna: S.selectedColor });
-  save(); closeModal('modal-kat');
+  await save(); closeModal('modal-kat');
   renderKatBar(); renderKatFilter(); renderKatManager();
   showToast('✓ Kategori ditambahkan');
 }
@@ -1546,19 +1549,19 @@ function uploadGambar(input) {
   r.readAsDataURL(file);
 }
 
-function hapusProduk(id) {
+async function hapusProduk(id) {
   if (!confirm('Hapus produk ini?')) return;
   S.produk = S.produk.filter(p => p.id !== id);
-  save(); renderGrid(); renderProdukTable();
+  await save(); renderGrid(); renderProdukTable();
   showToast('🗑️ Produk dihapus');
 }
 
-function tambahStok(id) {
+async function tambahStok(id) {
   const n = prompt('Tambah berapa stok?');
   if (!n || isNaN(n)) return;
   const i = S.produk.findIndex(p => p.id === id);
   S.produk[i].stok += parseInt(n);
-  save(); renderGrid(); renderProdukTable();
+  await save(); renderGrid(); renderProdukTable();
   showToast(`✓ Stok ditambah ${n}`);
 }
 
@@ -2000,7 +2003,7 @@ function renderSetting() {
   renderKatManager();
 }
 
-function saveSetting() {
+async function saveSetting() {
   if (!S.toko) S.toko = {};
   S.toko.nama = document.getElementById('set-nama').value.trim() || 'Toko Saya';
   S.toko.alamat = document.getElementById('set-alamat').value.trim();
@@ -2010,7 +2013,7 @@ function saveSetting() {
   // Update topbar chip
   const chip = document.getElementById('toko-nama-top');
   if (chip) chip.textContent = '🏪 ' + S.toko.nama;
-  save(); showToast('✓ Pengaturan disimpan');
+  await save(); showToast('✓ Pengaturan disimpan');
 }
 
 // ══════════════════════════════════════════════════
@@ -2048,7 +2051,7 @@ function dlCSV(filename, rows) {
   showToast('📥 File diunduh');
 }
 
-function resetData() {
+async function resetData() {
   if (!confirm('⚠️ Reset SEMUA data? Ini tidak bisa dibatalkan!')) return;
   if (!confirm('Yakin? Semua produk, transaksi, dan pengaturan akan terhapus.')) return;
   localStorage.removeItem(LS_CACHE);
@@ -2125,17 +2128,17 @@ self.addEventListener('fetch', e => {
 
 
 // ══ PAJAK SETTING ══
-function savePajakSetting() {
+async function savePajakSetting() {
   if (!S.setting) S.setting = {};
   S.setting.ppn = parseFloat(document.getElementById('set-ppn').value) || 0;
   S.setting.service = parseFloat(document.getElementById('set-service').value) || 0;
-  save(); showToast('✓ Pajak disimpan'); calcTotal();
+  await save(); showToast('✓ Pajak disimpan'); calcTotal();
 }
-function saveLoyaltySetting() {
+async function saveLoyaltySetting() {
   if (!S.setting) S.setting = {};
   S.setting.poinRate = parseInt(document.getElementById('set-poin-rate').value) || 1;
   S.setting.poinRedeem = parseInt(document.getElementById('set-poin-redeem').value) || 100;
-  save(); showToast('✓ Loyalty disimpan');
+  await save(); showToast('✓ Loyalty disimpan');
 }
 
 // ══ MEJA ══
@@ -2215,7 +2218,7 @@ function openPelangganModal(id) {
   }
   openModal('modal-pelanggan');
 }
-function savePelanggan() {
+async function savePelanggan() {
   const nama = document.getElementById('plg-nama').value.trim();
   if (!nama) { showToast('⚠️ Nama wajib'); return; }
   if (!S.pelanggan) S.pelanggan = [];
@@ -2236,12 +2239,12 @@ function savePelanggan() {
     S.pelanggan.push({ id: 'plg' + genId(), ...data, totalBelanja: 0, kunjungan: 0, createdAt: new Date().toISOString() });
     showToast('✓ Pelanggan ditambahkan');
   }
-  save(); closeModal('modal-pelanggan'); renderPelangganTable(); renderPelangganSelect();
+  await save(); closeModal('modal-pelanggan'); renderPelangganTable(); renderPelangganSelect();
 }
-function hapusPelanggan(id) {
+async function hapusPelanggan(id) {
   if (!confirm('Hapus pelanggan ini?')) return;
   S.pelanggan = (S.pelanggan || []).filter(p => p.id !== id);
-  save(); renderPelangganTable(); renderPelangganSelect(); showToast('🗑️ Dihapus');
+  await save(); renderPelangganTable(); renderPelangganSelect(); showToast('🗑️ Dihapus');
 }
 
 // ══ VARIAN ══
@@ -2432,7 +2435,7 @@ function openRetur(id) {
     </div>`;
   openModal('modal-retur');
 }
-function confirmRetur() {
+async function confirmRetur() {
   const t = S.transaksi.find(x => x.id === returTrxId);
   if (!t) return;
   // Return stok
@@ -2449,7 +2452,7 @@ function confirmRetur() {
     const pi = (S.pelanggan || []).findIndex(p => p.id === t.pelangganId);
     if (pi >= 0) S.pelanggan[pi].poin = Math.max(0, (S.pelanggan[pi].poin || 0) - t.poinDapat);
   }
-  save(); closeModal('modal-retur'); renderRiwayat(); renderGrid();
+  await save(); closeModal('modal-retur'); renderRiwayat(); renderGrid();
   showToast('✓ Retur berhasil diproses');
 }
 
@@ -2480,7 +2483,7 @@ function openBeliModal() {
   document.getElementById('beli-produk').innerHTML = S.produk.map(p => `<option value="${p.id}">${p.nama} (stok: ${p.stok})</option>`).join('');
   openModal('modal-beli');
 }
-function saveBeli() {
+async function saveBeli() {
   const produkId = document.getElementById('beli-produk').value;
   const qty = parseInt(document.getElementById('beli-qty').value) || 1;
   const harga = parseInt(document.getElementById('beli-harga').value) || 0;
@@ -2498,7 +2501,7 @@ function saveBeli() {
   const i = S.produk.findIndex(x => x.id === produkId);
   S.produk[i].stok += qty;
   if (harga > 0) S.produk[i].modal = harga;
-  save(); closeModal('modal-beli'); renderSupplier(); renderGrid(); renderProdukTable();
+  await save(); closeModal('modal-beli'); renderSupplier(); renderGrid(); renderProdukTable();
   showToast(`✓ +${qty} stok ${p.nama}`);
 }
 
@@ -2654,22 +2657,22 @@ function renderShiftHistory() {
   }).join('');
 }
 
-function hapusShift(id) {
+async function hapusShift(id) {
   if (!confirm('Yakin hapus shift ini?')) return;
   if (!confirm('Yakin hapus riwayat shift ini? Tidak bisa dikembalikan.')) return;
   S.shiftHistory = (S.shiftHistory || []).filter(sh => sh.id !== id);
-  save(); renderShiftHistory(); showToast('🗑️ Shift dihapus');
+  await save(); renderShiftHistory(); showToast('🗑️ Shift dihapus');
 }
-function bukaShift() {
+async function bukaShift() {
   const kasir = document.getElementById('shift-kasir').value.trim() || S.toko?.kasir || 'Admin';
   const kasAwal = parseInt(document.getElementById('shift-kas-awal').value) || 0;
   S.shift = { 
     id: genId(), kasir, kasAwal, mulai: new Date().toISOString(), 
     omzet: 0, omzetTunai: 0, omzetDigital: 0, omzetPoin: 0, trxCount: 0 
   };
-  save(); renderShift(); showToast('✓ Shift dibuka');
+  await save(); renderShift(); showToast('✓ Shift dibuka');
 }
-function tutupShift() {
+async function tutupShift() {
   const kasAkhir = parseInt(document.getElementById('kas-akhir')?.value) || 0;
   const catatan = document.getElementById('shift-catatan')?.value || '';
   S.shift.selesai = new Date().toISOString();
@@ -2680,7 +2683,7 @@ function tutupShift() {
   if (!S.shiftHistory) S.shiftHistory = [];
   S.shiftHistory.unshift({ ...S.shift });
   S.shift = null;
-  save(); renderShift(); updateShiftChip();
+  await save(); renderShift(); updateShiftChip();
   showToast('✓ Shift ditutup & direkap');
 }
 function updateShiftChip() {
@@ -2717,7 +2720,7 @@ function showPage(id, el) {
 }
 
 // Override saveProduk to handle varian/topping
-function saveProduk() {
+async function saveProduk() {
   const nama = document.getElementById('p-nama').value.trim();
   const harga = parseInt(document.getElementById('p-harga').value) || 0;
   const modal = parseInt(document.getElementById('p-modal').value) || 0;
@@ -2740,7 +2743,7 @@ function saveProduk() {
     S.produk.push({ id: 'p' + genId(), ...data });
     showToast('✓ Produk ditambahkan');
   }
-  save(); closeModal('modal-produk'); renderGrid(); renderProdukTable();
+  await save(); closeModal('modal-produk'); renderGrid(); renderProdukTable();
 }
 
 // Override openProdukModal to fill varian/topping
@@ -2882,14 +2885,14 @@ function onPelangganChange() {
   if (S.metode === 'poin' && plg) showToast(`⭐ Poin tersedia: ${plg.poin || 0}`);
 }
 
-function quickAddPelanggan() {
+async function quickAddPelanggan() {
   const nama = prompt('Nama pelanggan baru:');
   if (!nama?.trim()) return;
   const telp = prompt('No. telepon (Enter untuk skip):', '') || '';
   if (!S.pelanggan) S.pelanggan = [];
   const newPlg = { id: 'plg' + genId(), nama: nama.trim(), telp, poin: 0, totalBelanja: 0, kunjungan: 0, createdAt: new Date().toISOString() };
   S.pelanggan.push(newPlg);
-  save();
+  await save();
   renderPelangganSelect();
   document.getElementById('pelanggan-select').value = newPlg.id;
   onPelangganChange();
@@ -2959,7 +2962,7 @@ function calcKembalian() {
 }
 
 // ══ OVERRIDE prosesBayar with shift breakdown ══
-function prosesBayar() {
+async function prosesBayar() {
   if (!S.cart.length) return;
   const { sub, diskon, pajakAmt, serviceAmt, total } = getTotalBreakdown();
   const bayar = S.metode === 'tunai' ? parseInt(document.getElementById('bayar-val')?.value) || 0 : total;
@@ -3016,7 +3019,7 @@ function prosesBayar() {
 
   S.transaksi.unshift(trx);
   if (typeof mejaOrders !== 'undefined') mejaOrders[activeMeja] = [];
-  save();
+  await save();
 
   // Show struk (auto close after 4 detik, lalu reset otomatis)
   showStrukAutoReset(trx);
@@ -3360,7 +3363,7 @@ function checkOnboarding() {
   }
 }
 
-function saveOnboarding() {
+async function saveOnboarding() {
   const nama = document.getElementById('ob-nama').value.trim();
   if (!nama) { showToast('⚠️ Nama toko wajib diisi'); return; }
   if (!S.toko) S.toko = {};
@@ -3369,7 +3372,7 @@ function saveOnboarding() {
   S.toko.telp   = document.getElementById('ob-telp').value.trim();
   S.toko.kasir  = document.getElementById('ob-kasir').value.trim();
   S.toko.footer = document.getElementById('ob-footer').value.trim() || 'Terima kasih sudah berbelanja!';
-  save();
+  await save();
   document.getElementById('toko-nama-top') && (document.getElementById('toko-nama-top').textContent = '🏪 ' + S.toko.nama);
   closeModal('modal-onboarding');
   showToast('✅ Profil toko tersimpan!');

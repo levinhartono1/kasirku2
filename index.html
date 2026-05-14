@@ -3021,10 +3021,12 @@ async function prosesBayar() {
 
   S.transaksi.unshift(trx);
   if (typeof mejaOrders !== 'undefined') mejaOrders[activeMeja] = [];
-  await save();
 
-  // Show struk (auto close after 4 detik, lalu reset otomatis)
+  // Tampilkan struk SEGERA tanpa tunggu Supabase
   showStrukAutoReset(trx);
+
+  // Save ke lokal + Supabase di background (tidak block UI)
+  save().catch(e => console.warn('Background save error:', e));
 }
 
 function showStrukPro(trx) {
@@ -3102,6 +3104,11 @@ function showStrukAutoReset(trx) {
 
   // Tampilkan overlay struk dengan countdown
   const overlay = document.getElementById('modal-struk');
+  // Clear interval lama sebelum buka modal baru (prevent leak)
+  if (overlay._countdownInterval) {
+    clearInterval(overlay._countdownInterval);
+    overlay._countdownInterval = null;
+  }
   overlay.classList.add('open');
 
   // Tambah countdown bar di footer modal
@@ -3139,11 +3146,13 @@ function showStrukAutoReset(trx) {
 
 function closeStrukAndReset() {
   const overlay = document.getElementById('modal-struk');
-  // Clear countdown if any
+  // Clear semua countdown interval yang mungkin bocor
   if (overlay._countdownInterval) {
     clearInterval(overlay._countdownInterval);
     overlay._countdownInterval = null;
   }
+  // Guard: jangan tutup kalau sudah tertutup
+  if (!overlay.classList.contains('open')) return;
   overlay.classList.remove('open');
   // Reset semua
   S.cart = [];

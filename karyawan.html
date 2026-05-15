@@ -425,17 +425,24 @@ let filterActive = 'semua';
 let _deleteId = null;
 
 // ── SUPABASE ──
+let _supabaseRowId = null; // simpan id row supaya tidak fetch ulang
+
 async function load() {
   try {
-    const { data } = await sb.from('toko').select('*').limit(1).single();
+    const { data, error } = await sb.from('toko').select('*').limit(1).single();
+    if (error) throw error;
     if (data) {
-      S = { ...S, ...data.data };
+      _supabaseRowId = data.id;
+      // Merge: ambil SEMUA data dari Supabase, simpan di S
+      // Kita hanya override field karyawan saat save, sisanya tetap
+      const remote = data.data || {};
+      S = { ...remote };
       if (!S.karyawan) S.karyawan = [];
       document.getElementById('topbar-toko').textContent = S.namaToko || '';
       renderAll();
     }
   } catch(e) {
-    // fallback localStorage
+    console.warn('Supabase load gagal, pakai localStorage:', e);
     const saved = JSON.parse(localStorage.getItem('kasirku') || '{}');
     S = { ...S, ...saved };
     if (!S.karyawan) S.karyawan = [];
@@ -445,9 +452,20 @@ async function load() {
 
 async function save() {
   try {
-    const { data } = await sb.from('toko').select('id').limit(1).single();
-    if (data) await sb.from('toko').update({ data: S }).eq('id', data.id);
+    if (!_supabaseRowId) {
+      // Kalau belum ada id, fetch dulu
+      const { data } = await sb.from('toko').select('id,data').limit(1).single();
+      if (data) {
+        _supabaseRowId = data.id;
+        // Merge data existing dengan S (jangan timpa data lain)
+        S = { ...(data.data || {}), ...S };
+      }
+    }
+    if (_supabaseRowId) {
+      await sb.from('toko').update({ data: S }).eq('id', _supabaseRowId);
+    }
   } catch(e) {
+    console.warn('Supabase save gagal, pakai localStorage:', e);
     localStorage.setItem('kasirku', JSON.stringify(S));
   }
 }

@@ -1030,7 +1030,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
         <div class="page-sub">Ringkasan performa toko</div>
       </div>
       <div class="dash-range-row" style="margin-bottom:0">
-        <button class="range-btn active" data-range="7d" onclick="setDashRange('7d')">7 Hari</button>
+        <button class="range-btn active" data-range="today" onclick="setDashRange('today')">Hari Ini</button>
+        <button class="range-btn" data-range="7d" onclick="setDashRange('7d')">7 Hari</button>
         <button class="range-btn" data-range="30d" onclick="setDashRange('30d')">30 Hari</button>
         <button class="range-btn" data-range="90d" onclick="setDashRange('90d')">90 Hari</button>
         <button class="range-btn" data-range="thismonth" onclick="setDashRange('thismonth')">Bulan Ini</button>
@@ -2277,7 +2278,7 @@ const _origProsesBayar_paket = prosesBayar;
 // ══════════════════════════════════════════════════
 //  DASHBOARD UPGRADE — GRAFIK + DATE RANGE
 // ══════════════════════════════════════════════════
-let dashRange = '7d'; // '7d','30d','90d','custom'
+let dashRange = 'today';
 let dashFrom = '', dashTo = '';
 
 function setDashRange(r) {
@@ -2292,7 +2293,9 @@ function getDashDateRange() {
   const now = new Date();
   let from, to;
   to = now.toISOString().split('T')[0];
-  if (dashRange === '7d') {
+  if (dashRange === 'today') {
+    from = to;
+  } else if (dashRange === '7d') {
     const d = new Date(now); d.setDate(d.getDate() - 6);
     from = d.toISOString().split('T')[0];
   } else if (dashRange === '30d') {
@@ -2378,6 +2381,7 @@ function renderDashboard() {
 
   // Label range
   const rangeLabel = dashRange === 'custom' ? `${from} s/d ${to}` :
+    dashRange === 'today' ? 'Hari Ini' :
     dashRange === '7d' ? '7 Hari Terakhir' :
     dashRange === '30d' ? '30 Hari Terakhir' :
     dashRange === '90d' ? '90 Hari Terakhir' : 'Bulan Ini';
@@ -4174,6 +4178,22 @@ async function onAuthSuccess(user) {
   } else {
     // Belum ada role atau expired — tampilkan role screen
     showRoleScreen();
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  PIN NAV — auto focus next/prev
+// ══════════════════════════════════════════════════
+function pinNav(el, prevId, nextId) {
+  const val = el.value.replace(/[^0-9]/g, '');
+  el.value = val.slice(-1); // pastikan hanya 1 digit terakhir
+  if (val && nextId) {
+    const next = document.getElementById(nextId);
+    if (next) { next.focus(); next.select(); }
+  }
+  if (!val && prevId) {
+    const prev = document.getElementById(prevId);
+    if (prev) { prev.focus(); prev.select(); }
   }
 }
 

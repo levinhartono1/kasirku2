@@ -420,53 +420,74 @@ const SUPABASE_URL = 'https://oqmsqvfcinktqlncjhkp.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xbXNxdmZjaW5rdHFsbmNqaGtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Njg3NjIsImV4cCI6MjA5NDE0NDc2Mn0.d0ag3-lzLZJG_h6PhpXGTduBKFjW0BPxp3zwvdm2Rlg';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let S = { karyawan: [], toko: {} };
+let S = {};           // seluruh state toko (sama persis seperti di index.html)
+let _tokoStateId = null;
+let _currentUser = null;
 let filterActive = 'semua';
 let _deleteId = null;
 
-// ── SUPABASE ──
-let _supabaseRowId = null; // simpan id row supaya tidak fetch ulang
+// ── INIT ──
+async function init() {
+  // Cek session aktif
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    // Belum login, redirect ke index
+    window.location.href = 'index.html';
+    return;
+  }
+  _currentUser = session.user;
+  await loadState();
+}
 
-async function load() {
+// ── LOAD dari toko_state berdasarkan user_id ──
+async function loadState() {
   try {
-    const { data, error } = await sb.from('toko').select('*').limit(1).single();
+    const { data, error } = await sb
+      .from('toko_state')
+      .select('id, state')
+      .eq('user_id', _currentUser.id)
+      .single();
+
     if (error) throw error;
-    if (data) {
-      _supabaseRowId = data.id;
-      // Merge: ambil SEMUA data dari Supabase, simpan di S
-      // Kita hanya override field karyawan saat save, sisanya tetap
-      const remote = data.data || {};
-      S = { ...remote };
-      if (!S.karyawan) S.karyawan = [];
-      document.getElementById('topbar-toko').textContent = S.namaToko || '';
-      renderAll();
-    }
-  } catch(e) {
-    console.warn('Supabase load gagal, pakai localStorage:', e);
-    const saved = JSON.parse(localStorage.getItem('kasirku') || '{}');
-    S = { ...S, ...saved };
+
+    _tokoStateId = data.id;
+    S = data.state || {};
     if (!S.karyawan) S.karyawan = [];
+
+    document.getElementById('topbar-toko').textContent = S.toko?.nama || S.namaToko || '';
     renderAll();
+  } catch(e) {
+    console.error('Load gagal:', e);
+    showToast('❌ Gagal load data');
   }
 }
 
-async function save() {
+// ── SAVE — hanya update field karyawan, data lain tidak disentuh ──
+async function saveState() {
+  if (!_tokoStateId) { showToast('❌ Belum terhubung ke database'); return; }
   try {
-    if (!_supabaseRowId) {
-      // Kalau belum ada id, fetch dulu
-      const { data } = await sb.from('toko').select('id,data').limit(1).single();
-      if (data) {
-        _supabaseRowId = data.id;
-        // Merge data existing dengan S (jangan timpa data lain)
-        S = { ...(data.data || {}), ...S };
-      }
-    }
-    if (_supabaseRowId) {
-      await sb.from('toko').update({ data: S }).eq('id', _supabaseRowId);
-    }
+    // Update hanya field karyawan di dalam state, sisanya tetap
+    const { data: current } = await sb
+      .from('toko_state')
+      .select('state')
+      .eq('id', _tokoStateId)
+      .single();
+
+    const merged = { ...(current?.state || {}), karyawan: S.karyawan };
+
+    const { error } = await sb
+      .from('toko_state')
+      .update({ state: merged, updated_at: new Date().toISOString() })
+      .eq('id', _tokoStateId);
+
+    if (error) throw error;
+
+    // Sync S supaya konsisten
+    S = merged;
   } catch(e) {
-    console.warn('Supabase save gagal, pakai localStorage:', e);
-    localStorage.setItem('kasirku', JSON.stringify(S));
+    console.error('Save gagal:', e);
+    showToast('❌ Gagal simpan data');
+    throw e;
   }
 }
 
@@ -506,7 +527,6 @@ function renderKaryawan() {
   grid.innerHTML = list.map(k => {
     const inisial = k.nama.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
     const jabatanLabel = {owner:'Owner',manager:'Manager',kasir:'Kasir',gudang:'Gudang',lainnya:'Lainnya'}[k.jabatan] || k.jabatan;
-    const pinDisplay = k.pin ? '••••' : '—';
     const tglMasuk = k.tglMasuk ? new Date(k.tglMasuk).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}) : '—';
     return `
     <div class="karyawan-card">
@@ -519,7 +539,7 @@ function renderKaryawan() {
         <div class="karyawan-info">
           <div class="karyawan-info-row"><span class="icon">📱</span>${k.hp || '—'}</div>
           <div class="karyawan-info-row"><span class="icon">📅</span>Masuk: ${tglMasuk}</div>
-          <div class="karyawan-info-row"><span class="icon">🔐</span><span class="pin-badge">${pinDisplay}</span></div>
+          <div class="karyawan-info-row"><span class="icon">🔐</span><span class="pin-badge">${k.pin ? '••••' : '—'}</span></div>
           <div class="karyawan-info-row"><span class="icon">${k.status==='aktif'?'🟢':'⚫'}</span>${k.status==='aktif'?'Aktif':'Non-Aktif'}</div>
         </div>
       </div>
@@ -549,7 +569,6 @@ function openModal(id) {
   document.getElementById('f-hp').value = k?.hp || '';
   document.getElementById('f-tgl').value = k?.tglMasuk || new Date().toISOString().split('T')[0];
   document.getElementById('f-status').value = k?.status || 'aktif';
-  // PIN — kosongkan saat edit untuk keamanan
   ['pin1','pin2','pin3','pin4'].forEach(pid => document.getElementById(pid).value = '');
   document.getElementById('modal-karyawan').classList.add('open');
   setTimeout(() => document.getElementById('f-nama').focus(), 100);
@@ -569,54 +588,42 @@ async function saveKaryawan() {
   const tglMasuk = document.getElementById('f-tgl').value;
   const status = document.getElementById('f-status').value;
   const editId = document.getElementById('edit-id').value;
-
   const pinRaw = ['pin1','pin2','pin3','pin4'].map(id => document.getElementById(id).value).join('');
 
   if (!nama) { showToast('⚠️ Nama wajib diisi'); return; }
-  if (!jabatan) { showToast('⚠️ Jabatan wajib dipilih'); return; }
-
-  // PIN wajib saat tambah baru, opsional saat edit
   if (!editId && pinRaw.length !== 4) { showToast('⚠️ PIN 4 digit wajib diisi'); return; }
   if (pinRaw && pinRaw.length !== 4) { showToast('⚠️ PIN harus tepat 4 digit'); return; }
 
-  // Cek duplikat PIN (kecuali karyawan sendiri)
-  if (pinRaw) {
-    const dupPin = (S.karyawan||[]).find(k => k.pin === pinRaw && k.id !== editId);
-    if (dupPin) { showToast(`⚠️ PIN sudah dipakai oleh ${dupPin.nama}`); return; }
-  }
+  const dupPin = (S.karyawan||[]).find(k => k.pin === pinRaw && k.id !== editId);
+  if (pinRaw && dupPin) { showToast(`⚠️ PIN sudah dipakai ${dupPin.nama}`); return; }
 
   if (!S.karyawan) S.karyawan = [];
 
   if (editId) {
     const i = S.karyawan.findIndex(x => x.id === editId);
-    if (i >= 0) {
-      S.karyawan[i] = {
-        ...S.karyawan[i], nama, jabatan, hp, tglMasuk, status,
-        ...(pinRaw ? { pin: pinRaw } : {}),
-        updatedAt: new Date().toISOString(),
-      };
-    }
-    showToast('✓ Data karyawan diperbarui');
+    if (i >= 0) S.karyawan[i] = { ...S.karyawan[i], nama, jabatan, hp, tglMasuk, status, ...(pinRaw ? { pin: pinRaw } : {}) };
   } else {
-    S.karyawan.push({
-      id: genId(), nama, jabatan, hp, tglMasuk, status,
-      pin: pinRaw, createdAt: new Date().toISOString(),
-    });
-    showToast(`✓ ${nama} ditambahkan`);
+    S.karyawan.push({ id: genId(), nama, jabatan, hp, tglMasuk, status, pin: pinRaw, createdAt: new Date().toISOString() });
   }
 
-  await save();
-  closeModal();
-  renderAll();
+  try {
+    await saveState();
+    closeModal();
+    renderAll();
+    showToast(editId ? '✓ Data diperbarui' : `✓ ${nama} ditambahkan`);
+  } catch(e) {
+    // saveState sudah tampilkan toast error
+  }
 }
 
 async function toggleStatus(id) {
   const i = (S.karyawan||[]).findIndex(x=>x.id===id);
   if (i<0) return;
-  const sebelum = S.karyawan[i].status || 'aktif';
-  S.karyawan[i].status = sebelum === 'aktif' ? 'nonaktif' : 'aktif';
-  await save(); renderAll();
-  showToast(`${S.karyawan[i].nama} → ${S.karyawan[i].status}`);
+  S.karyawan[i].status = S.karyawan[i].status === 'aktif' ? 'nonaktif' : 'aktif';
+  try {
+    await saveState(); renderAll();
+    showToast(`${S.karyawan[i].nama} → ${S.karyawan[i].status}`);
+  } catch(e) {}
 }
 
 // ── HAPUS ──
@@ -635,13 +642,15 @@ async function doDelete() {
   if (!_deleteId) return;
   const k = S.karyawan.find(x=>x.id===_deleteId);
   S.karyawan = S.karyawan.filter(x=>x.id !== _deleteId);
-  await save(); closeConfirm(); renderAll();
-  showToast(`🗑️ ${k?.nama} dihapus`);
+  try {
+    await saveState(); closeConfirm(); renderAll();
+    showToast(`🗑️ ${k?.nama} dihapus`);
+  } catch(e) {}
 }
 
 // ── TOAST ──
 let _toastTimer;
-function showToast(msg, dur=2200) {
+function showToast(msg, dur=2500) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   clearTimeout(_toastTimer);
@@ -649,15 +658,11 @@ function showToast(msg, dur=2200) {
 }
 
 // Tutup modal klik backdrop
-document.getElementById('modal-karyawan').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
-document.getElementById('modal-confirm').addEventListener('click', function(e) {
-  if (e.target === this) closeConfirm();
-});
+document.getElementById('modal-karyawan').addEventListener('click', e => { if (e.target === document.getElementById('modal-karyawan')) closeModal(); });
+document.getElementById('modal-confirm').addEventListener('click', e => { if (e.target === document.getElementById('modal-confirm')) closeConfirm(); });
 
 // Init
-load();
+init();
 </script>
 </body>
 </html>

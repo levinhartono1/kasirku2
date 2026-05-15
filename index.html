@@ -786,13 +786,13 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
         <div class="dd-item" onclick="showPage('paket',document.getElementById('dd-inventori'));closeAllDropdowns()">🎁 Kelola Paket</div>
         <div class="dd-item" onclick="openPaketModal();closeAllDropdowns()">➕ Tambah Paket</div>
         <div class="dd-divider"></div>
-        <div class="dd-item" onclick="window.location.href='karyawan.html'">👥 Karyawan</div>
-        <div class="dd-divider"></div>
         <div class="dd-item" onclick="showPage('supplier',document.getElementById('dd-inventori'));closeAllDropdowns()">🚚 Stok Masuk</div>
         <div class="dd-item" onclick="openBeliModal();closeAllDropdowns()">➕ Catat Pembelian</div>
         <div class="dd-divider"></div>
         <div class="dd-item" onclick="showPage('kat-manager',document.getElementById('dd-inventori'));closeAllDropdowns()">🏷️ Daftar Kategori</div>      </div>
     </div>
+
+    <button class="nav-tab" onclick="window.location.href='karyawan.html'">👥 Karyawan</button>
 
     <div class="nav-dropdown">
       <button class="nav-tab nav-dd-trigger" id="dd-pelanggan" onclick="toggleDropdown('dd-pelanggan',event)">👥 Pelanggan ▾</button>

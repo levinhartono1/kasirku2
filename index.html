@@ -4163,14 +4163,37 @@ async function onAuthSuccess(user) {
   const emailEl = document.getElementById('setting-email-display');
   if (emailEl && user.email) emailEl.textContent = '📧 ' + user.email;
 
-  // Cek apakah sudah ada owner terdaftar
-  showRoleScreen();
+  // Cek apakah sudah ada role aktif yang belum expire
+  const savedRole = getRoleFromStorage();
+  if (savedRole) {
+    // Sudah login role sebelumnya dan masih valid — langsung masuk
+    document.getElementById('role-screen').style.display = 'none';
+    applyRoleAccess(savedRole.role, savedRole.nama);
+    setTimeout(checkOnboarding, 300);
+    showToast(`✅ Selamat datang, ${savedRole.nama}!`);
+  } else {
+    // Belum ada role atau expired — tampilkan role screen
+    showRoleScreen();
+  }
 }
 
 // ══════════════════════════════════════════════════
 //  ROLE SCREEN
 // ══════════════════════════════════════════════════
-let _roleTarget = null; // 'owner' atau jabatan yang dipilih
+let _roleTarget = null;
+
+function getRoleFromStorage() {
+  try {
+    const raw = localStorage.getItem('kasirku_active_role');
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (Date.now() > data.exp) {
+      localStorage.removeItem('kasirku_active_role');
+      return null;
+    }
+    return data;
+  } catch(e) { return null; }
+}
 
 function showRoleScreen() {
   const karyawan = S.karyawan || [];
@@ -4255,18 +4278,12 @@ function doRoleLogin() {
     return;
   }
 
-  // Simpan session role
-  sessionStorage.setItem('kasirku_role', match.jabatan);
-  sessionStorage.setItem('kasirku_nama', match.nama);
-  sessionStorage.setItem('kasirku_uid', match.id);
+  // Simpan role ke localStorage dengan expire 8 jam
+  const roleData = { role: match.jabatan, nama: match.nama, uid: match.id, exp: Date.now() + 8*60*60*1000 };
+  localStorage.setItem('kasirku_active_role', JSON.stringify(roleData));
 
-  // Sembunyikan role screen
   document.getElementById('role-screen').style.display = 'none';
-
-  // Apply akses berdasarkan role
   applyRoleAccess(match.jabatan);
-
-  // Cek onboarding
   setTimeout(checkOnboarding, 300);
   showToast(`✅ Selamat datang, ${match.nama}!`);
 }
@@ -4291,22 +4308,19 @@ async function saveOwnerSetup() {
 
   await save();
 
-  // Langsung login sebagai owner
-  sessionStorage.setItem('kasirku_role', 'owner');
-  sessionStorage.setItem('kasirku_nama', nama);
+  const roleData = { role: 'owner', nama, uid: S.karyawan[S.karyawan.length-1].id, exp: Date.now() + 8*60*60*1000 };
+  localStorage.setItem('kasirku_active_role', JSON.stringify(roleData));
   document.getElementById('role-screen').style.display = 'none';
   applyRoleAccess('owner');
   setTimeout(checkOnboarding, 300);
   showToast(`✅ Akun owner berhasil dibuat!`);
 }
 
-function applyRoleAccess(role) {
+function applyRoleAccess(role, namaParam) {
   const isOwner = role === 'owner';
   const isManager = role === 'manager';
   const canEdit = isOwner;
-
-  // Tampilkan nama di topbar
-  const nama = sessionStorage.getItem('kasirku_nama') || '';
+  const nama = namaParam || (getRoleFromStorage()?.nama) || '';
   const roleLabel = {owner:'👑 Owner',manager:'📋 Manager',kasir:'🛒 Kasir',gudang:'📦 Gudang'}[role] || role;
   const userEl = document.getElementById('topbar-user-email');
   if (userEl) userEl.textContent = `${roleLabel} · ${nama}`;
@@ -4341,9 +4355,7 @@ function applyRoleAccess(role) {
 
 
 function doLogout() {
-  sessionStorage.removeItem('kasirku_role');
-  sessionStorage.removeItem('kasirku_nama');
-  sessionStorage.removeItem('kasirku_uid');
+  localStorage.removeItem('kasirku_active_role');
   window._kasirkuRole = null;
   window._kasirkuCanEdit = false;
   document.querySelectorAll('.nav-tab, .nav-dropdown').forEach(el => el.style.display = '');

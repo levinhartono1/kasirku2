@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1c1a17">
+<title>Karyawan — KasirKu</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #faf9f7; --white: #ffffff;
+  --surface: #f3f1ed; --surface2: #ebe8e2;
+  --border: #e0dbd2; --border2: #ccc6bb;
+  --ink: #1c1a17; --ink2: #6b6457; --ink3: #a09890;
+  --primary: #d4450c; --primary-light: #fff2ee; --primary-dark: #b33a0a;
+  --green: #1a7f4b; --green-light: #edfaf3;
+  --red: #c92a2a; --red-light: #fff0f0;
+  --blue: #1864ab; --blue-light: #e8f4ff;
+  --yellow: #c47700; --yellow-light: #fff8e6;
+  --purple: #6d28d9; --purple-light: #f5f3ff;
+  --sans: 'DM Sans', sans-serif;
+  --display: 'Syne', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow: 0 2px 8px rgba(0,0,0,0.07);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+  --r: 14px; --r-sm: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--bg); color: var(--ink); font-size: 14px; min-height: 100vh; }
+
+/* TOPBAR */
+.topbar {
+  background: var(--ink); color: var(--white);
+  height: 54px; display: flex; align-items: center;
+  padding: 0 1.5rem; gap: 1rem;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+.topbar-logo { font-family: var(--display); font-size: 1.2rem; font-weight: 800; letter-spacing: -0.5px; }
+.topbar-logo span { color: var(--primary); }
+.topbar-back {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: transparent; color: rgba(255,255,255,0.6);
+  font-family: var(--sans); font-size: 0.78rem; cursor: pointer;
+  transition: all 0.15s; text-decoration: none;
+}
+.topbar-back:hover { border-color: rgba(255,255,255,0.4); color: white; background: rgba(255,255,255,0.08); }
+.topbar-title { font-family: var(--display); font-size: 0.9rem; font-weight: 700; color: rgba(255,255,255,0.5); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* LAYOUT */
+.container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+/* PAGE HEADER */
+.page-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1rem; margin-bottom: 1.75rem; flex-wrap: wrap;
+}
+.page-title { font-family: var(--display); font-size: 1.6rem; font-weight: 800; letter-spacing: -0.5px; }
+.page-sub { font-size: 0.82rem; color: var(--ink3); margin-top: 3px; }
+
+/* STATS ROW */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.75rem; }
+@media (max-width: 768px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+.stat-card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1.1rem 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+.stat-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ink3); margin-bottom: 6px; }
+.stat-val { font-family: var(--display); font-size: 1.8rem; font-weight: 800; line-height: 1; }
+.stat-sub { font-size: 0.72rem; color: var(--ink3); margin-top: 4px; }
+
+/* FILTER & SEARCH */
+.toolbar {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 1rem; flex-wrap: wrap;
+}
+.search-wrap { position: relative; flex: 1; min-width: 200px; }
+.search-wrap input {
+  width: 100%; padding: 9px 12px 9px 36px;
+  border: 1.5px solid var(--border); border-radius: var(--r-sm);
+  font-family: var(--sans); font-size: 0.85rem; outline: none;
+  background: var(--white); transition: all 0.15s; color: var(--ink);
+}
+.search-wrap input:focus { border-color: var(--primary); }
+.search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--ink3); font-size: 0.85rem; pointer-events: none; }
+.filter-pill {
+  padding: 7px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+  background: var(--white); font-size: 0.75rem; font-weight: 600;
+  cursor: pointer; font-family: var(--sans); color: var(--ink2);
+  transition: all 0.15s; white-space: nowrap;
+}
+.filter-pill.active { background: var(--ink); color: white; border-color: var(--ink); }
+
+/* KARYAWAN GRID */
+.karyawan-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.karyawan-card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden;
+  box-shadow: var(--shadow-sm); transition: box-shadow 0.15s, transform 0.15s;
+  position: relative;
+}
+.karyawan-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.karyawan-card-top { height: 5px; }
+.karyawan-card-body { padding: 1.1rem 1.25rem; }
+.karyawan-avatar {
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-size: 1.4rem; font-weight: 800;
+  color: white; margin-bottom: 10px; flex-shrink: 0;
+}
+.karyawan-nama { font-family: var(--display); font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
+.karyawan-jabatan { font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 6px; display: inline-block; margin-bottom: 10px; }
+.karyawan-info { display: flex; flex-direction: column; gap: 5px; }
+.karyawan-info-row { display: flex; align-items: center; gap: 7px; font-size: 0.78rem; color: var(--ink2); }
+.karyawan-info-row .icon { font-size: 0.82rem; width: 16px; text-align: center; }
+.karyawan-card-footer {
+  padding: 10px 1.25rem; border-top: 1px solid var(--border);
+  display: flex; gap: 6px; background: var(--surface);
+}
+.karyawan-status {
+  position: absolute; top: 14px; right: 14px;
+  width: 9px; height: 9px; border-radius: 50%;
+  border: 2px solid var(--white);
+}
+.karyawan-status.aktif { background: var(--green); }
+.karyawan-status.nonaktif { background: var(--ink3); }
+
+/* JABATAN COLORS */
+.jabatan-owner { background: var(--primary-light); color: var(--primary); }
+.jabatan-manager { background: var(--purple-light); color: var(--purple); }
+.jabatan-kasir { background: var(--blue-light); color: var(--blue); }
+.jabatan-gudang { background: var(--yellow-light); color: var(--yellow); }
+.jabatan-lainnya { background: var(--surface2); color: var(--ink2); }
+
+.top-owner { background: var(--primary); }
+.top-manager { background: var(--purple); }
+.top-kasir { background: var(--blue); }
+.top-gudang { background: var(--yellow); }
+.top-lainnya { background: var(--ink3); }
+
+.avatar-owner { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); }
+.avatar-manager { background: linear-gradient(135deg, #7c3aed, #4f46e5); }
+.avatar-kasir { background: linear-gradient(135deg, #1864ab, #0ea5e9); }
+.avatar-gudang { background: linear-gradient(135deg, #c47700, #d97706); }
+.avatar-lainnya { background: linear-gradient(135deg, #6b6457, #a09890); }
+
+/* EMPTY STATE */
+.empty-state {
+  text-align: center; padding: 4rem 2rem;
+  color: var(--ink3);
+}
+.empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+.empty-text { font-size: 0.9rem; font-weight: 500; }
+.empty-sub { font-size: 0.78rem; margin-top: 4px; }
+
+/* BUTTONS */
+.btn {
+  padding: 8px 16px; border-radius: var(--r-sm); border: 1.5px solid var(--border);
+  background: var(--white); font-family: var(--sans); font-size: 0.8rem;
+  font-weight: 600; cursor: pointer; color: var(--ink2);
+  transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px;
+}
+.btn:hover { border-color: var(--border2); color: var(--ink); background: var(--surface); }
+.btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
+.btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); color: white; }
+.btn-danger { color: var(--red); border-color: var(--red-light); }
+.btn-danger:hover { background: var(--red-light); }
+.btn-sm { padding: 5px 10px; font-size: 0.75rem; }
+.btn-green { background: var(--green); color: white; border-color: var(--green); }
+.btn-green:hover { background: #15693e; color: white; }
+
+/* MODAL */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  display: none; align-items: center; justify-content: center;
+  z-index: 1000; padding: 1rem; backdrop-filter: blur(3px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--white); border-radius: 18px;
+  width: 100%; max-width: 480px; max-height: 90vh;
+  overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  animation: modalIn 0.2s ease;
+}
+@keyframes modalIn { from { opacity:0; transform:translateY(12px) scale(0.98); } to { opacity:1; transform:none; } }
+.modal-header {
+  padding: 1.25rem 1.5rem 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-title { font-family: var(--display); font-size: 1.05rem; font-weight: 700; }
+.modal-close {
+  width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); font-size: 0.9rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; color: var(--ink2);
+  transition: all 0.15s;
+}
+.modal-close:hover { background: var(--surface2); color: var(--ink); }
+.modal-body { padding: 1.25rem 1.5rem; }
+.modal-footer {
+  padding: 1rem 1.5rem 1.25rem;
+  display: flex; gap: 8px; justify-content: flex-end;
+  border-top: 1px solid var(--border);
+}
+
+/* FORM */
+.form-group { margin-bottom: 1rem; }
+.form-label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--ink2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 9px 12px; border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); font-family: var(--sans); font-size: 0.85rem;
+  outline: none; background: var(--white); color: var(--ink); transition: border-color 0.15s;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+
+/* PIN INPUT */
+.pin-wrap { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
+.pin-dot {
+  width: 44px; height: 52px; border-radius: 10px;
+  border: 2px solid var(--border); background: var(--surface);
+  font-family: var(--mono); font-size: 1.4rem; font-weight: 700;
+  text-align: center; color: var(--ink); outline: none;
+  transition: border-color 0.15s;
+}
+.pin-dot:focus { border-color: var(--primary); background: var(--white); }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+  background: var(--ink); color: white; padding: 10px 20px;
+  border-radius: 30px; font-size: 0.82rem; font-weight: 500;
+  z-index: 9999; opacity: 0; transition: opacity 0.2s;
+  pointer-events: none; white-space: nowrap; box-shadow: var(--shadow-md);
+}
+.toast.show { opacity: 1; }
+
+/* BADGE PIN */
+.pin-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--mono); font-size: 0.72rem;
+  background: var(--surface2); color: var(--ink2);
+  padding: 2px 8px; border-radius: 6px; letter-spacing: 2px;
+}
+
+/* CONFIRM MODAL */
+.confirm-modal {
+  background: var(--white); border-radius: 18px;
+  width: 100%; max-width: 340px;
+  padding: 1.75rem; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  animation: modalIn 0.2s ease;
+}
+.confirm-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+.confirm-title { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
+.confirm-msg { font-size: 0.82rem; color: var(--ink2); margin-bottom: 1.25rem; line-height: 1.5; }
+.confirm-btns { display: flex; gap: 8px; justify-content: center; }
+
+/* RESPONSIVE */
+@media (max-width: 600px) {
+  .container { padding: 1.25rem 1rem; }
+  .karyawan-grid { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <a href="index.html" class="topbar-back">← Kembali</a>
+  <div class="topbar-logo">Kasir<span>Ku</span></div>
+  <div class="topbar-title">/ Karyawan</div>
+  <div class="topbar-right">
+    <div id="topbar-toko" style="font-size:0.75rem;color:rgba(255,255,255,0.4)"></div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">👥 Manajemen Karyawan</div>
+      <div class="page-sub">Kelola data dan akses karyawan toko</div>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">+ Tambah Karyawan</button>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Total Karyawan</div>
+      <div class="stat-val" id="stat-total">0</div>
+      <div class="stat-sub">Terdaftar</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Aktif</div>
+      <div class="stat-val" id="stat-aktif" style="color:var(--green)">0</div>
+      <div class="stat-sub">Sedang bertugas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Kasir</div>
+      <div class="stat-val" id="stat-kasir" style="color:var(--blue)">0</div>
+      <div class="stat-sub">Role kasir</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Non-Aktif</div>
+      <div class="stat-val" id="stat-nonaktif" style="color:var(--ink3)">0</div>
+      <div class="stat-sub">Tidak aktif</div>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search-input" placeholder="Cari nama karyawan..." oninput="renderKaryawan()">
+    </div>
+    <button class="filter-pill active" data-filter="semua" onclick="setFilter('semua',this)">Semua</button>
+    <button class="filter-pill" data-filter="owner" onclick="setFilter('owner',this)">Owner</button>
+    <button class="filter-pill" data-filter="manager" onclick="setFilter('manager',this)">Manager</button>
+    <button class="filter-pill" data-filter="kasir" onclick="setFilter('kasir',this)">Kasir</button>
+    <button class="filter-pill" data-filter="gudang" onclick="setFilter('gudang',this)">Gudang</button>
+    <button class="filter-pill" data-filter="aktif" onclick="setFilter('aktif',this)">Aktif</button>
+    <button class="filter-pill" data-filter="nonaktif" onclick="setFilter('nonaktif',this)">Non-Aktif</button>
+  </div>
+
+  <!-- GRID -->
+  <div class="karyawan-grid" id="karyawan-grid"></div>
+</div>
+
+<!-- ══ MODAL TAMBAH/EDIT KARYAWAN ══ -->
+<div class="modal-overlay" id="modal-karyawan">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Tambah Karyawan</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nama Lengkap *</label>
+          <input type="text" id="f-nama" placeholder="Nama karyawan">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Jabatan / Role *</label>
+          <select id="f-jabatan">
+            <option value="kasir">Kasir</option>
+            <option value="owner">Owner</option>
+            <option value="manager">Manager</option>
+            <option value="gudang">Gudang</option>
+            <option value="lainnya">Lainnya</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nomor HP</label>
+          <input type="tel" id="f-hp" placeholder="08xx-xxxx-xxxx">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tanggal Masuk</label>
+          <input type="date" id="f-tgl">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select id="f-status">
+          <option value="aktif">Aktif</option>
+          <option value="nonaktif">Non-Aktif</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">PIN Login (4 digit) *</label>
+        <div class="pin-wrap">
+          <input class="pin-dot" type="password" maxlength="1" id="pin1" inputmode="numeric" oninput="pinNav(this,'','pin2')">
+          <input class="pin-dot" type="password" maxlength="1" id="pin2" inputmode="numeric" oninput="pinNav(this,'pin1','pin3')">
+          <input class="pin-dot" type="password" maxlength="1" id="pin3" inputmode="numeric" oninput="pinNav(this,'pin2','pin4')">
+          <input class="pin-dot" type="password" maxlength="1" id="pin4" inputmode="numeric" oninput="pinNav(this,'pin3','')">
+        </div>
+        <div style="font-size:0.72rem;color:var(--ink3);text-align:center;margin-top:4px">PIN digunakan untuk login sebagai karyawan ini</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Batal</button>
+      <button class="btn btn-primary" onclick="saveKaryawan()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL KONFIRMASI HAPUS ══ -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="confirm-modal">
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title">Hapus Karyawan?</div>
+    <div class="confirm-msg" id="confirm-msg">Data karyawan akan dihapus permanen.</div>
+    <div class="confirm-btns">
+      <button class="btn" onclick="closeConfirm()">Batal</button>
+      <button class="btn btn-danger" id="confirm-ok" onclick="">Hapus</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://oqmsqvfcinktqlncjhkp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xbXNxdmZjaW5rdHFsbmNqaGtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Njg3NjIsImV4cCI6MjA5NDE0NDc2Mn0.d0ag3-lzLZJG_h6PhpXGTduBKFjW0BPxp3zwvdm2Rlg';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let S = { karyawan: [], toko: {} };
+let filterActive = 'semua';
+let _deleteId = null;
+
+// ── SUPABASE ──
+async function load() {
+  try {
+    const { data } = await sb.from('toko').select('*').limit(1).single();
+    if (data) {
+      S = { ...S, ...data.data };
+      if (!S.karyawan) S.karyawan = [];
+      document.getElementById('topbar-toko').textContent = S.namaToko || '';
+      renderAll();
+    }
+  } catch(e) {
+    // fallback localStorage
+    const saved = JSON.parse(localStorage.getItem('kasirku') || '{}');
+    S = { ...S, ...saved };
+    if (!S.karyawan) S.karyawan = [];
+    renderAll();
+  }
+}
+
+async function save() {
+  try {
+    const { data } = await sb.from('toko').select('id').limit(1).single();
+    if (data) await sb.from('toko').update({ data: S }).eq('id', data.id);
+  } catch(e) {
+    localStorage.setItem('kasirku', JSON.stringify(S));
+  }
+}
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// ── RENDER ──
+function renderAll() { renderStats(); renderKaryawan(); }
+
+function renderStats() {
+  const list = S.karyawan || [];
+  document.getElementById('stat-total').textContent = list.length;
+  document.getElementById('stat-aktif').textContent = list.filter(k => k.status === 'aktif').length;
+  document.getElementById('stat-kasir').textContent = list.filter(k => k.jabatan === 'kasir').length;
+  document.getElementById('stat-nonaktif').textContent = list.filter(k => k.status === 'nonaktif').length;
+}
+
+function renderKaryawan() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  let list = (S.karyawan || []).filter(k => {
+    const mq = !q || k.nama.toLowerCase().includes(q) || (k.hp||'').includes(q);
+    if (filterActive === 'semua') return mq;
+    if (filterActive === 'aktif') return mq && k.status === 'aktif';
+    if (filterActive === 'nonaktif') return mq && k.status === 'nonaktif';
+    return mq && k.jabatan === filterActive;
+  });
+
+  const grid = document.getElementById('karyawan-grid');
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">👥</div>
+      <div class="empty-text">${filterActive !== 'semua' ? 'Tidak ada karyawan di filter ini' : 'Belum ada karyawan'}</div>
+      <div class="empty-sub">${filterActive === 'semua' ? 'Klik "+ Tambah Karyawan" untuk mulai' : ''}</div>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(k => {
+    const inisial = k.nama.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    const jabatanLabel = {owner:'Owner',manager:'Manager',kasir:'Kasir',gudang:'Gudang',lainnya:'Lainnya'}[k.jabatan] || k.jabatan;
+    const pinDisplay = k.pin ? '••••' : '—';
+    const tglMasuk = k.tglMasuk ? new Date(k.tglMasuk).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}) : '—';
+    return `
+    <div class="karyawan-card">
+      <div class="karyawan-card-top top-${k.jabatan}"></div>
+      <div class="karyawan-status ${k.status||'aktif'}"></div>
+      <div class="karyawan-card-body">
+        <div class="karyawan-avatar avatar-${k.jabatan}">${inisial}</div>
+        <div class="karyawan-nama">${k.nama}</div>
+        <div class="karyawan-jabatan jabatan-${k.jabatan}">${jabatanLabel}</div>
+        <div class="karyawan-info">
+          <div class="karyawan-info-row"><span class="icon">📱</span>${k.hp || '—'}</div>
+          <div class="karyawan-info-row"><span class="icon">📅</span>Masuk: ${tglMasuk}</div>
+          <div class="karyawan-info-row"><span class="icon">🔐</span><span class="pin-badge">${pinDisplay}</span></div>
+          <div class="karyawan-info-row"><span class="icon">${k.status==='aktif'?'🟢':'⚫'}</span>${k.status==='aktif'?'Aktif':'Non-Aktif'}</div>
+        </div>
+      </div>
+      <div class="karyawan-card-footer">
+        <button class="btn btn-sm" style="flex:1" onclick="openModal('${k.id}')">✏️ Edit</button>
+        <button class="btn btn-sm ${k.status==='aktif'?'':'btn-green'}" onclick="toggleStatus('${k.id}')">${k.status==='aktif'?'🔴 Non-Aktif':'🟢 Aktifkan'}</button>
+        <button class="btn btn-sm btn-danger" onclick="confirmDelete('${k.id}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setFilter(f, btn) {
+  filterActive = f;
+  document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderKaryawan();
+}
+
+// ── MODAL ──
+function openModal(id) {
+  const k = id ? (S.karyawan||[]).find(x=>x.id===id) : null;
+  document.getElementById('modal-title').textContent = k ? 'Edit Karyawan' : 'Tambah Karyawan';
+  document.getElementById('edit-id').value = id || '';
+  document.getElementById('f-nama').value = k?.nama || '';
+  document.getElementById('f-jabatan').value = k?.jabatan || 'kasir';
+  document.getElementById('f-hp').value = k?.hp || '';
+  document.getElementById('f-tgl').value = k?.tglMasuk || new Date().toISOString().split('T')[0];
+  document.getElementById('f-status').value = k?.status || 'aktif';
+  // PIN — kosongkan saat edit untuk keamanan
+  ['pin1','pin2','pin3','pin4'].forEach(pid => document.getElementById(pid).value = '');
+  document.getElementById('modal-karyawan').classList.add('open');
+  setTimeout(() => document.getElementById('f-nama').focus(), 100);
+}
+
+function closeModal() { document.getElementById('modal-karyawan').classList.remove('open'); }
+
+function pinNav(el, prevId, nextId) {
+  if (el.value && nextId) document.getElementById(nextId)?.focus();
+  if (!el.value && prevId) document.getElementById(prevId)?.focus();
+}
+
+async function saveKaryawan() {
+  const nama = document.getElementById('f-nama').value.trim();
+  const jabatan = document.getElementById('f-jabatan').value;
+  const hp = document.getElementById('f-hp').value.trim();
+  const tglMasuk = document.getElementById('f-tgl').value;
+  const status = document.getElementById('f-status').value;
+  const editId = document.getElementById('edit-id').value;
+
+  const pinRaw = ['pin1','pin2','pin3','pin4'].map(id => document.getElementById(id).value).join('');
+
+  if (!nama) { showToast('⚠️ Nama wajib diisi'); return; }
+  if (!jabatan) { showToast('⚠️ Jabatan wajib dipilih'); return; }
+
+  // PIN wajib saat tambah baru, opsional saat edit
+  if (!editId && pinRaw.length !== 4) { showToast('⚠️ PIN 4 digit wajib diisi'); return; }
+  if (pinRaw && pinRaw.length !== 4) { showToast('⚠️ PIN harus tepat 4 digit'); return; }
+
+  // Cek duplikat PIN (kecuali karyawan sendiri)
+  if (pinRaw) {
+    const dupPin = (S.karyawan||[]).find(k => k.pin === pinRaw && k.id !== editId);
+    if (dupPin) { showToast(`⚠️ PIN sudah dipakai oleh ${dupPin.nama}`); return; }
+  }
+
+  if (!S.karyawan) S.karyawan = [];
+
+  if (editId) {
+    const i = S.karyawan.findIndex(x => x.id === editId);
+    if (i >= 0) {
+      S.karyawan[i] = {
+        ...S.karyawan[i], nama, jabatan, hp, tglMasuk, status,
+        ...(pinRaw ? { pin: pinRaw } : {}),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    showToast('✓ Data karyawan diperbarui');
+  } else {
+    S.karyawan.push({
+      id: genId(), nama, jabatan, hp, tglMasuk, status,
+      pin: pinRaw, createdAt: new Date().toISOString(),
+    });
+    showToast(`✓ ${nama} ditambahkan`);
+  }
+
+  await save();
+  closeModal();
+  renderAll();
+}
+
+async function toggleStatus(id) {
+  const i = (S.karyawan||[]).findIndex(x=>x.id===id);
+  if (i<0) return;
+  const sebelum = S.karyawan[i].status || 'aktif';
+  S.karyawan[i].status = sebelum === 'aktif' ? 'nonaktif' : 'aktif';
+  await save(); renderAll();
+  showToast(`${S.karyawan[i].nama} → ${S.karyawan[i].status}`);
+}
+
+// ── HAPUS ──
+function confirmDelete(id) {
+  const k = (S.karyawan||[]).find(x=>x.id===id);
+  if (!k) return;
+  _deleteId = id;
+  document.getElementById('confirm-msg').textContent = `Hapus data ${k.nama}? Tindakan ini tidak bisa dibatalkan.`;
+  document.getElementById('confirm-ok').onclick = doDelete;
+  document.getElementById('modal-confirm').classList.add('open');
+}
+
+function closeConfirm() { document.getElementById('modal-confirm').classList.remove('open'); _deleteId = null; }
+
+async function doDelete() {
+  if (!_deleteId) return;
+  const k = S.karyawan.find(x=>x.id===_deleteId);
+  S.karyawan = S.karyawan.filter(x=>x.id !== _deleteId);
+  await save(); closeConfirm(); renderAll();
+  showToast(`🗑️ ${k?.nama} dihapus`);
+}
+
+// ── TOAST ──
+let _toastTimer;
+function showToast(msg, dur=2200) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// Tutup modal klik backdrop
+document.getElementById('modal-karyawan').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+document.getElementById('modal-confirm').addEventListener('click', function(e) {
+  if (e.target === this) closeConfirm();
+});
+
+// Init
+load();
+</script>
+</body>
+</html>

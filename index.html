@@ -860,6 +860,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
         Buat Akun Owner →
       </button>
       <div id="setup-msg" style="margin-top:10px;font-size:0.8rem;color:#c92a2a;text-align:center;display:none"></div>
+      <div style="text-align:center;margin-top:12px">
+        <button id="role-screen-logout" onclick="doLogout()" style="background:none;border:none;color:#a09890;font-size:0.75rem;cursor:pointer;font-family:'DM Sans',sans-serif">← Keluar / Ganti Akun</button>
+      </div>
     </div>
 
     <!-- STEP 2: Pilih Role -->
@@ -902,6 +905,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
         Masuk →
       </button>
       <div id="role-login-msg" style="margin-top:10px;font-size:0.8rem;color:#c92a2a;text-align:center;display:none"></div>
+      <div style="text-align:center;margin-top:12px">
+        <button onclick="doLogout()" style="background:none;border:none;color:#a09890;font-size:0.75rem;cursor:pointer;font-family:'DM Sans',sans-serif">← Keluar / Ganti Akun Email</button>
+      </div>
     </div>
 
   </div>
@@ -4216,16 +4222,19 @@ function getRoleFromStorage() {
 }
 
 function showRoleScreen() {
+  // FIX: pastikan S.karyawan sudah terload dari Supabase
   const karyawan = S.karyawan || [];
   const hasOwner = karyawan.some(k => k.jabatan === 'owner');
   const rs = document.getElementById('role-screen');
   rs.style.display = 'flex';
 
   if (!hasOwner) {
-    // Belum ada owner — tampilkan form setup owner
     document.getElementById('role-setup-owner').style.display = 'block';
     document.getElementById('role-pick').style.display = 'none';
     document.getElementById('role-login').style.display = 'none';
+    // Sembunyikan tombol keluar di setup owner (belum ada akun sama sekali)
+    const logoutBtn = document.getElementById('role-screen-logout');
+    if (logoutBtn) logoutBtn.style.display = 'block';
     setTimeout(() => document.getElementById('setup-nama').focus(), 100);
   } else {
     showRolePick();
@@ -4237,13 +4246,19 @@ function showRolePick() {
   document.getElementById('role-login').style.display = 'none';
   document.getElementById('role-pick').style.display = 'block';
 
-  // Render tombol per karyawan aktif
   const karyawan = (S.karyawan || []).filter(k => k.status === 'aktif' || !k.status);
   const colors = { owner:'#d4450c', manager:'#6d28d9', kasir:'#1864ab', gudang:'#c47700', lainnya:'#6b6457' };
   const icons  = { owner:'👑', manager:'📋', kasir:'🛒', gudang:'📦', lainnya:'👤' };
-
-  // Group by jabatan
   const jabatanList = [...new Set(karyawan.map(k => k.jabatan))];
+
+  // Kalau tidak ada karyawan aktif sama sekali — aneh, tampilkan pesan
+  if (!jabatanList.length) {
+    document.getElementById('role-pick-buttons').innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;color:rgba(255,255,255,0.4);font-size:0.82rem;padding:1rem">
+        Belum ada karyawan aktif.<br>Hubungi owner toko.
+      </div>`;
+    return;
+  }
 
   document.getElementById('role-pick-buttons').innerHTML = jabatanList.map(jab => {
     const label = {owner:'Owner',manager:'Manager',kasir:'Kasir',gudang:'Gudang',lainnya:'Lainnya'}[jab] || jab;
@@ -4253,7 +4268,7 @@ function showRolePick() {
       background:#fff;border:2px solid ${color};border-radius:16px;
       padding:1.5rem 1rem;cursor:pointer;transition:all 0.15s;
       display:flex;flex-direction:column;align-items:center;gap:8px;
-      font-family:'DM Sans',sans-serif;
+      font-family:'DM Sans',sans-serif;color:#1c1a17;
     " onmouseover="this.style.background='${color}';this.style.color='#fff'"
       onmouseout="this.style.background='#fff';this.style.color='#1c1a17'">
       <span style="font-size:1.8rem">${icon}</span>
@@ -4282,7 +4297,15 @@ function doRoleLogin() {
   if (!username) { msg.textContent = '⚠️ Username wajib diisi'; msg.style.display = 'block'; return; }
   if (pin.length !== 4) { msg.textContent = '⚠️ PIN harus 4 digit'; msg.style.display = 'block'; return; }
 
+  // FIX: Pastikan S.karyawan sudah ada dan tidak kosong
   const karyawan = S.karyawan || [];
+  if (!karyawan.length) {
+    msg.textContent = '❌ Data karyawan belum dimuat. Coba refresh halaman.';
+    msg.style.display = 'block';
+    return;
+  }
+
+  // FIX: Validasi username + PIN + jabatan sekaligus — tidak bisa cross-toko
   const match = karyawan.find(k =>
     k.username === username &&
     k.pin === pin &&
@@ -4298,12 +4321,10 @@ function doRoleLogin() {
     return;
   }
 
-  // Simpan role ke localStorage dengan expire 8 jam
   const roleData = { role: match.jabatan, nama: match.nama, uid: match.id, exp: Date.now() + 8*60*60*1000 };
   localStorage.setItem('kasirku_active_role', JSON.stringify(roleData));
-
   document.getElementById('role-screen').style.display = 'none';
-  applyRoleAccess(match.jabatan);
+  applyRoleAccess(match.jabatan, match.nama);
   setTimeout(checkOnboarding, 300);
   showToast(`✅ Selamat datang, ${match.nama}!`);
 }
@@ -4320,18 +4341,19 @@ async function saveOwnerSetup() {
   if (pin.length !== 4) { msg.textContent = '⚠️ PIN harus 4 digit'; msg.style.display = 'block'; return; }
 
   if (!S.karyawan) S.karyawan = [];
-  S.karyawan.push({
+  const newOwner = {
     id: genId(), nama, username, jabatan: 'owner',
     pin, status: 'aktif', tglMasuk: new Date().toISOString().split('T')[0],
     createdAt: new Date().toISOString()
-  });
-
+  };
+  S.karyawan.push(newOwner);
   await save();
 
-  const roleData = { role: 'owner', nama, uid: S.karyawan[S.karyawan.length-1].id, exp: Date.now() + 8*60*60*1000 };
+  // FIX: simpan ID yang benar (bukan index terakhir yang bisa salah)
+  const roleData = { role: 'owner', nama, uid: newOwner.id, exp: Date.now() + 8*60*60*1000 };
   localStorage.setItem('kasirku_active_role', JSON.stringify(roleData));
   document.getElementById('role-screen').style.display = 'none';
-  applyRoleAccess('owner');
+  applyRoleAccess('owner', nama);
   setTimeout(checkOnboarding, 300);
   showToast(`✅ Akun owner berhasil dibuat!`);
 }

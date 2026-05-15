@@ -607,9 +607,6 @@ async function saveKaryawan() {
   const dupUser = (S.karyawan||[]).find(k => k.username === username && k.id !== editId);
   if (dupUser) { showToast(`⚠️ Username "@${username}" sudah dipakai ${dupUser.nama}`); return; }
 
-  const dupPin = (S.karyawan||[]).find(k => k.pin === pinRaw && k.id !== editId);
-  if (pinRaw && dupPin) { showToast(`⚠️ PIN sudah dipakai ${dupPin.nama}`); return; }
-
   if (!S.karyawan) S.karyawan = [];
 
   if (editId) {

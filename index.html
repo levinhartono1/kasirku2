@@ -796,11 +796,11 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
 
     <!-- Dropdown khusus kasir - hidden by default, tampil saat login kasir -->
     <div class="nav-dropdown" id="kasir-menu" style="display:none">
-      <button class="nav-tab nav-dd-trigger" onclick="toggleDropdown('kasir-menu-dd',event)">📦 Produk ▾</button>
-      <div class="nav-dd-menu" id="kasir-menu-dd">
-        <div class="dd-item" onclick="showPage('produk',document.querySelector('#kasir-menu button'));closeAllDropdowns()">📋 Daftar Produk</div>
+      <button class="nav-tab nav-dd-trigger" id="dd-kasir-produk" onclick="toggleDropdown('dd-kasir-produk',event)">📦 Produk ▾</button>
+      <div class="nav-dd-menu">
+        <div class="dd-item" onclick="showPage('produk',document.getElementById('dd-kasir-produk'));closeAllDropdowns()">📋 Daftar Produk</div>
         <div class="dd-divider"></div>
-        <div class="dd-item" onclick="showPage('supplier',document.querySelector('#kasir-menu button'));closeAllDropdowns()">🚚 Lihat Stok Masuk</div>
+        <div class="dd-item" onclick="showPage('supplier',document.getElementById('dd-kasir-produk'));closeAllDropdowns()">🚚 Lihat Stok Masuk</div>
         <div class="dd-item" onclick="openBeliModal();closeAllDropdowns()">➕ Tambah Stok</div>
       </div>
     </div>
@@ -4080,9 +4080,10 @@ function toggleDropdown(id, e) {
   const wasOpen = parent.classList.contains('open');
   closeAllDropdowns();
   if (!wasOpen) {
-    // Position menu based on button location
     const rect = btn.getBoundingClientRect();
-    menu.style.left = rect.left + 'px';
+    // Pastikan tidak keluar layar di sebelah kanan
+    const left = Math.min(rect.left, window.innerWidth - 220);
+    menu.style.left = Math.max(0, left) + 'px';
     parent.classList.add('open');
   }
 }

@@ -822,7 +822,93 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
   </div>
 </div>
 
-<!-- MOBILE BOTTOM NAV -->
+<!-- ══════════════════════════════════════════════
+     ROLE SCREEN — Pilih Owner/Kasir + Username+PIN
+══════════════════════════════════════════════ -->
+<div id="role-screen" style="
+  position:fixed;inset:0;background:#1c1a17;z-index:99998;
+  display:none;align-items:center;justify-content:center;
+  font-family:'DM Sans',sans-serif;
+">
+  <div style="width:100%;max-width:420px;margin:1rem">
+
+    <!-- STEP 1: Buat Owner Pertama -->
+    <div id="role-setup-owner" style="display:none;background:#fff;border-radius:20px;padding:2.5rem;box-shadow:0 24px 80px rgba(0,0,0,0.4)">
+      <div style="text-align:center;margin-bottom:1.75rem">
+        <div style="font-size:2.5rem;margin-bottom:8px">👑</div>
+        <div style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:#1c1a17">Buat Akun Owner</div>
+        <div style="font-size:0.78rem;color:#a09890;margin-top:4px">Belum ada owner terdaftar. Buat akun owner terlebih dahulu.</div>
+      </div>
+      <div style="margin-bottom:1rem">
+        <label style="font-size:0.72rem;font-weight:700;color:#6b6457;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Nama Lengkap *</label>
+        <input id="setup-nama" type="text" placeholder="Nama owner" style="width:100%;padding:10px 14px;border:1.5px solid #e0dbd2;border-radius:10px;font-size:0.9rem;outline:none;font-family:'DM Sans',sans-serif;box-sizing:border-box" onfocus="this.style.borderColor='#d4450c'" onblur="this.style.borderColor='#e0dbd2'">
+      </div>
+      <div style="margin-bottom:1rem">
+        <label style="font-size:0.72rem;font-weight:700;color:#6b6457;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Username * <span style="font-weight:400;text-transform:none;font-size:0.68rem">(tanpa spasi)</span></label>
+        <input id="setup-username" type="text" placeholder="Contoh: owner.toko" autocomplete="off" style="width:100%;padding:10px 14px;border:1.5px solid #e0dbd2;border-radius:10px;font-size:0.9rem;outline:none;font-family:'DM Mono',monospace;box-sizing:border-box" onfocus="this.style.borderColor='#d4450c'" onblur="this.style.borderColor='#e0dbd2'" oninput="this.value=this.value.toLowerCase().replace(/\s/g,'')">
+      </div>
+      <div style="margin-bottom:1.5rem">
+        <label style="font-size:0.72rem;font-weight:700;color:#6b6457;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">PIN 4 Digit *</label>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <input class="pin-dot" type="password" maxlength="1" id="setup-pin1" inputmode="numeric" oninput="pinNav(this,'','setup-pin2')" style="width:52px;height:56px;border-radius:12px;border:2px solid #e0dbd2;background:#f3f1ed;font-size:1.5rem;text-align:center;outline:none">
+          <input class="pin-dot" type="password" maxlength="1" id="setup-pin2" inputmode="numeric" oninput="pinNav(this,'setup-pin1','setup-pin3')" style="width:52px;height:56px;border-radius:12px;border:2px solid #e0dbd2;background:#f3f1ed;font-size:1.5rem;text-align:center;outline:none">
+          <input class="pin-dot" type="password" maxlength="1" id="setup-pin3" inputmode="numeric" oninput="pinNav(this,'setup-pin2','setup-pin4')" style="width:52px;height:56px;border-radius:12px;border:2px solid #e0dbd2;background:#f3f1ed;font-size:1.5rem;text-align:center;outline:none">
+          <input class="pin-dot" type="password" maxlength="1" id="setup-pin4" inputmode="numeric" oninput="pinNav(this,'setup-pin3','')" style="width:52px;height:56px;border-radius:12px;border:2px solid #e0dbd2;background:#f3f1ed;font-size:1.5rem;text-align:center;outline:none">
+        </div>
+      </div>
+      <button onclick="saveOwnerSetup()" style="width:100%;padding:12px;background:#d4450c;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:'DM Sans',sans-serif">
+        Buat Akun Owner →
+      </button>
+      <div id="setup-msg" style="margin-top:10px;font-size:0.8rem;color:#c92a2a;text-align:center;display:none"></div>
+    </div>
+
+    <!-- STEP 2: Pilih Role -->
+    <div id="role-pick" style="display:none">
+      <div style="text-align:center;margin-bottom:1.5rem">
+        <div style="font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;color:#fff">Kasir<span style="color:#d4450c">Ku</span></div>
+        <div style="font-size:0.78rem;color:rgba(255,255,255,0.4);margin-top:4px">Pilih akun untuk masuk</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem" id="role-pick-buttons">
+        <!-- Diisi dinamis -->
+      </div>
+      <div style="text-align:center;margin-top:1rem">
+        <button onclick="doLogout()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:0.75rem;cursor:pointer;font-family:'DM Sans',sans-serif">Keluar dari akun</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Input Username + PIN -->
+    <div id="role-login" style="display:none;background:#fff;border-radius:20px;padding:2.5rem;box-shadow:0 24px 80px rgba(0,0,0,0.4)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.5rem">
+        <button onclick="showRolePick()" style="background:#f3f1ed;border:none;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center">←</button>
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800" id="role-login-title">Masuk sebagai Owner</div>
+          <div style="font-size:0.72rem;color:#a09890">Masukkan username dan PIN kamu</div>
+        </div>
+      </div>
+      <div style="margin-bottom:1rem">
+        <label style="font-size:0.72rem;font-weight:700;color:#6b6457;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Username</label>
+        <input id="role-username" type="text" placeholder="username" autocomplete="off" style="width:100%;padding:10px 14px;border:1.5px solid #e0dbd2;border-radius:10px;font-size:0.9rem;outline:none;font-family:'DM Mono',monospace;box-sizing:border-box" onfocus="this.style.borderColor='#d4450c'" onblur="this.style.borderColor='#e0dbd2'" oninput="this.value=this.value.toLowerCase().replace(/\s/g,'')" onkeydown="if(event.key==='Enter')document.getElementById('role-pin1').focus()">
+      </div>
+      <div style="margin-bottom:1.5rem">
+        <label style="font-size:0.72rem;font-weight:700;color:#6b6457;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">PIN</label>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <input type="password" maxlength="1" id="role-pin1" inputmode="numeric" oninput="pinNav(this,'','role-pin2')" style="width:52px;height:56px;border-radius:12px;border:2px solid #e0dbd2;background:#f3f1ed;font-size:1.5rem;text-align:center;outline:none;font-family:'DM Mono',monospace">
+          <input type="password" maxlength="1" id="role-pin2" inputmode="numeric" oninput="pinNav(this,'role-pin1','role-pin3')" style="width:52px;height:56px;border-radius:12px;border:2px solid #e0dbd2;background:#f3f1ed;font-size:1.5rem;text-align:center;outline:none;font-family:'DM Mono',monospace">
+          <input type="password" maxlength="1" id="role-pin3" inputmode="numeric" oninput="pinNav(this,'role-pin2','role-pin4')" style="width:52px;height:56px;border-radius:12px;border:2px solid #e0dbd2;background:#f3f1ed;font-size:1.5rem;text-align:center;outline:none;font-family:'DM Mono',monospace">
+          <input type="password" maxlength="1" id="role-pin4" inputmode="numeric" oninput="pinNav(this,'role-pin3','')" onkeydown="if(event.key==='Enter')doRoleLogin()" style="width:52px;height:56px;border-radius:12px;border:2px solid #e0dbd2;background:#f3f1ed;font-size:1.5rem;text-align:center;outline:none;font-family:'DM Mono',monospace">
+        </div>
+      </div>
+      <button onclick="doRoleLogin()" style="width:100%;padding:12px;background:#d4450c;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:'DM Sans',sans-serif">
+        Masuk →
+      </button>
+      <div id="role-login-msg" style="margin-top:10px;font-size:0.8rem;color:#c92a2a;text-align:center;display:none"></div>
+    </div>
+
+  </div>
+</div>
+
+
+
 <nav class="mobile-nav" id="mobile-nav" style="display:none">
   <button class="mnb active" onclick="showPage('pos',this)"><span class="nav-icon">🛒</span><span class="nav-label">Kasir</span></button>
   <button class="mnb" onclick="showPage('dashboard',this)"><span class="nav-icon">📊</span><span class="nav-label">Dash</span></button>
@@ -4050,7 +4136,6 @@ async function authForgotPassword() {
 
 async function onAuthSuccess(user) {
   currentUser = user;
-  // Get toko_state for this user
   const { data, error } = await sb.from('toko_state')
     .select('id')
     .eq('user_id', user.id)
@@ -4059,40 +4144,212 @@ async function onAuthSuccess(user) {
   if (data) {
     currentTokoId = data.id;
   } else {
-    // New user — create initial state
     const initPayload = { ...S, nextId };
     const { data: newSt, error: insertErr } = await sb.from('toko_state').insert({
       user_id: user.id,
       state: initPayload
     }).select('id').single();
-    if (insertErr) {
-      console.warn('Insert error:', insertErr.message);
-    } else {
-      currentTokoId = newSt.id;
-    }
+    if (!insertErr) currentTokoId = newSt.id;
   }
 
-  // Hide auth screen
   document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'none';
-  // Load data from Supabase
+
+  // Load data dulu sebelum cek role
   await loadFromSupabase();
-  // Update topbar with user email
+
   const userEl = document.getElementById('topbar-user-email');
   if (userEl) userEl.textContent = user.email;
-  showToast('✅ Selamat datang!');
-  // Show email di settings
   const emailEl = document.getElementById('setting-email-display');
   if (emailEl && user.email) emailEl.textContent = '📧 ' + user.email;
-  // Cek onboarding
-  setTimeout(checkOnboarding, 500);
+
+  // Cek apakah sudah ada owner terdaftar
+  showRoleScreen();
 }
 
+// ══════════════════════════════════════════════════
+//  ROLE SCREEN
+// ══════════════════════════════════════════════════
+let _roleTarget = null; // 'owner' atau jabatan yang dipilih
+
+function showRoleScreen() {
+  const karyawan = S.karyawan || [];
+  const hasOwner = karyawan.some(k => k.jabatan === 'owner');
+  const rs = document.getElementById('role-screen');
+  rs.style.display = 'flex';
+
+  if (!hasOwner) {
+    // Belum ada owner — tampilkan form setup owner
+    document.getElementById('role-setup-owner').style.display = 'block';
+    document.getElementById('role-pick').style.display = 'none';
+    document.getElementById('role-login').style.display = 'none';
+    setTimeout(() => document.getElementById('setup-nama').focus(), 100);
+  } else {
+    showRolePick();
+  }
+}
+
+function showRolePick() {
+  document.getElementById('role-setup-owner').style.display = 'none';
+  document.getElementById('role-login').style.display = 'none';
+  document.getElementById('role-pick').style.display = 'block';
+
+  // Render tombol per karyawan aktif
+  const karyawan = (S.karyawan || []).filter(k => k.status === 'aktif' || !k.status);
+  const colors = { owner:'#d4450c', manager:'#6d28d9', kasir:'#1864ab', gudang:'#c47700', lainnya:'#6b6457' };
+  const icons  = { owner:'👑', manager:'📋', kasir:'🛒', gudang:'📦', lainnya:'👤' };
+
+  // Group by jabatan
+  const jabatanList = [...new Set(karyawan.map(k => k.jabatan))];
+
+  document.getElementById('role-pick-buttons').innerHTML = jabatanList.map(jab => {
+    const label = {owner:'Owner',manager:'Manager',kasir:'Kasir',gudang:'Gudang',lainnya:'Lainnya'}[jab] || jab;
+    const color = colors[jab] || '#6b6457';
+    const icon  = icons[jab]  || '👤';
+    return `<button onclick="showRoleLogin('${jab}')" style="
+      background:#fff;border:2px solid ${color};border-radius:16px;
+      padding:1.5rem 1rem;cursor:pointer;transition:all 0.15s;
+      display:flex;flex-direction:column;align-items:center;gap:8px;
+      font-family:'DM Sans',sans-serif;
+    " onmouseover="this.style.background='${color}';this.style.color='#fff'"
+      onmouseout="this.style.background='#fff';this.style.color='#1c1a17'">
+      <span style="font-size:1.8rem">${icon}</span>
+      <span style="font-weight:700;font-size:0.9rem">${label}</span>
+    </button>`;
+  }).join('');
+}
+
+function showRoleLogin(jabatan) {
+  _roleTarget = jabatan;
+  const label = {owner:'Owner',manager:'Manager',kasir:'Kasir',gudang:'Gudang',lainnya:'Lainnya'}[jabatan] || jabatan;
+  document.getElementById('role-pick').style.display = 'none';
+  document.getElementById('role-login').style.display = 'block';
+  document.getElementById('role-login-title').textContent = `Masuk sebagai ${label}`;
+  document.getElementById('role-username').value = '';
+  document.getElementById('role-login-msg').style.display = 'none';
+  ['role-pin1','role-pin2','role-pin3','role-pin4'].forEach(id => document.getElementById(id).value = '');
+  setTimeout(() => document.getElementById('role-username').focus(), 100);
+}
+
+function doRoleLogin() {
+  const username = document.getElementById('role-username').value.trim().toLowerCase();
+  const pin = ['role-pin1','role-pin2','role-pin3','role-pin4'].map(id => document.getElementById(id).value).join('');
+  const msg = document.getElementById('role-login-msg');
+
+  if (!username) { msg.textContent = '⚠️ Username wajib diisi'; msg.style.display = 'block'; return; }
+  if (pin.length !== 4) { msg.textContent = '⚠️ PIN harus 4 digit'; msg.style.display = 'block'; return; }
+
+  const karyawan = S.karyawan || [];
+  const match = karyawan.find(k =>
+    k.username === username &&
+    k.pin === pin &&
+    k.jabatan === _roleTarget &&
+    (k.status === 'aktif' || !k.status)
+  );
+
+  if (!match) {
+    msg.textContent = '❌ Username atau PIN salah';
+    msg.style.display = 'block';
+    ['role-pin1','role-pin2','role-pin3','role-pin4'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('role-pin1').focus();
+    return;
+  }
+
+  // Simpan session role
+  sessionStorage.setItem('kasirku_role', match.jabatan);
+  sessionStorage.setItem('kasirku_nama', match.nama);
+  sessionStorage.setItem('kasirku_uid', match.id);
+
+  // Sembunyikan role screen
+  document.getElementById('role-screen').style.display = 'none';
+
+  // Apply akses berdasarkan role
+  applyRoleAccess(match.jabatan);
+
+  // Cek onboarding
+  setTimeout(checkOnboarding, 300);
+  showToast(`✅ Selamat datang, ${match.nama}!`);
+}
+
+async function saveOwnerSetup() {
+  const nama = document.getElementById('setup-nama').value.trim();
+  const username = document.getElementById('setup-username').value.trim().toLowerCase();
+  const pin = ['setup-pin1','setup-pin2','setup-pin3','setup-pin4'].map(id => document.getElementById(id).value).join('');
+  const msg = document.getElementById('setup-msg');
+
+  if (!nama) { msg.textContent = '⚠️ Nama wajib diisi'; msg.style.display = 'block'; return; }
+  if (!username) { msg.textContent = '⚠️ Username wajib diisi'; msg.style.display = 'block'; return; }
+  if (!/^[a-z0-9._]+$/.test(username)) { msg.textContent = '⚠️ Username: huruf kecil, angka, titik, underscore'; msg.style.display = 'block'; return; }
+  if (pin.length !== 4) { msg.textContent = '⚠️ PIN harus 4 digit'; msg.style.display = 'block'; return; }
+
+  if (!S.karyawan) S.karyawan = [];
+  S.karyawan.push({
+    id: genId(), nama, username, jabatan: 'owner',
+    pin, status: 'aktif', tglMasuk: new Date().toISOString().split('T')[0],
+    createdAt: new Date().toISOString()
+  });
+
+  await save();
+
+  // Langsung login sebagai owner
+  sessionStorage.setItem('kasirku_role', 'owner');
+  sessionStorage.setItem('kasirku_nama', nama);
+  document.getElementById('role-screen').style.display = 'none';
+  applyRoleAccess('owner');
+  setTimeout(checkOnboarding, 300);
+  showToast(`✅ Akun owner berhasil dibuat!`);
+}
+  const isOwner = role === 'owner';
+  const isManager = role === 'manager';
+  const canEdit = isOwner;
+
+  // Tampilkan nama di topbar
+  const nama = sessionStorage.getItem('kasirku_nama') || '';
+  const roleLabel = {owner:'👑 Owner',manager:'📋 Manager',kasir:'🛒 Kasir',gudang:'📦 Gudang'}[role] || role;
+  const userEl = document.getElementById('topbar-user-email');
+  if (userEl) userEl.textContent = `${roleLabel} · ${nama}`;
+
+  // Sembunyikan menu berdasarkan role
+  if (!isOwner && !isManager) {
+    // Kasir & Gudang: sembunyikan Inventori, Karyawan, Laporan, Setting
+    document.querySelectorAll('.nav-dd-trigger').forEach(btn => {
+      const id = btn.id;
+      if (['dd-inventori','dd-laporan'].includes(id)) {
+        btn.closest('.nav-dropdown').style.display = 'none';
+      }
+    });
+    // Sembunyikan tab Karyawan dan Setting di navbar
+    document.querySelectorAll('.nav-tab').forEach(btn => {
+      const txt = btn.textContent;
+      if (txt.includes('Karyawan') || txt.includes('Pengaturan')) btn.style.display = 'none';
+    });
+  }
+
+  if (isManager) {
+    // Manager: sembunyikan Setting & Karyawan saja
+    document.querySelectorAll('.nav-tab').forEach(btn => {
+      if (btn.textContent.includes('Karyawan') || btn.textContent.includes('Pengaturan')) btn.style.display = 'none';
+    });
+  }
+
+  // Simpan role di window supaya bisa dicek di render functions
+  window._kasirkuRole = role;
+  window._kasirkuCanEdit = canEdit;
+}
+
+
 function doLogout() {
+  sessionStorage.removeItem('kasirku_role');
+  sessionStorage.removeItem('kasirku_nama');
+  sessionStorage.removeItem('kasirku_uid');
+  window._kasirkuRole = null;
+  window._kasirkuCanEdit = false;
+  document.querySelectorAll('.nav-tab, .nav-dropdown').forEach(el => el.style.display = '');
   if (!confirm('Yakin mau keluar?')) return;
   sb.auth.signOut().then(() => {
     currentUser = null; currentTokoId = null;
     document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('role-screen').style.display = 'none';
     document.getElementById('auth-msg').style.display = 'none';
   });
 }

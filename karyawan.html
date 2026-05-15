@@ -364,6 +364,10 @@ body { font-family: var(--sans); background: var(--bg); color: var(--ink); font-
           </select>
         </div>
       </div>
+      <div class="form-group">
+        <label class="form-label">Username * <span style="font-weight:400;text-transform:none;font-size:0.7rem;color:var(--ink3)">(dipakai saat login, unik, tanpa spasi)</span></label>
+        <input type="text" id="f-username" placeholder="Contoh: budi.kasir" autocomplete="off" style="font-family:var(--mono)" oninput="this.value=this.value.toLowerCase().replace(/\s/g,'')">
+      </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Nomor HP</label>
@@ -389,7 +393,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--ink); font-
           <input class="pin-dot" type="password" maxlength="1" id="pin3" inputmode="numeric" oninput="pinNav(this,'pin2','pin4')">
           <input class="pin-dot" type="password" maxlength="1" id="pin4" inputmode="numeric" oninput="pinNav(this,'pin3','')">
         </div>
-        <div style="font-size:0.72rem;color:var(--ink3);text-align:center;margin-top:4px">PIN digunakan untuk login sebagai karyawan ini</div>
+        <div style="font-size:0.72rem;color:var(--ink3);text-align:center;margin-top:4px">Username + PIN digunakan untuk login</div>
       </div>
     </div>
     <div class="modal-footer">
@@ -537,6 +541,7 @@ function renderKaryawan() {
         <div class="karyawan-nama">${k.nama}</div>
         <div class="karyawan-jabatan jabatan-${k.jabatan}">${jabatanLabel}</div>
         <div class="karyawan-info">
+          <div class="karyawan-info-row"><span class="icon">👤</span><span style="font-family:var(--mono);font-size:0.78rem">@${k.username || '—'}</span></div>
           <div class="karyawan-info-row"><span class="icon">📱</span>${k.hp || '—'}</div>
           <div class="karyawan-info-row"><span class="icon">📅</span>Masuk: ${tglMasuk}</div>
           <div class="karyawan-info-row"><span class="icon">🔐</span><span class="pin-badge">${k.pin ? '••••' : '—'}</span></div>
@@ -565,6 +570,7 @@ function openModal(id) {
   document.getElementById('modal-title').textContent = k ? 'Edit Karyawan' : 'Tambah Karyawan';
   document.getElementById('edit-id').value = id || '';
   document.getElementById('f-nama').value = k?.nama || '';
+  document.getElementById('f-username').value = k?.username || '';
   document.getElementById('f-jabatan').value = k?.jabatan || 'kasir';
   document.getElementById('f-hp').value = k?.hp || '';
   document.getElementById('f-tgl').value = k?.tglMasuk || new Date().toISOString().split('T')[0];
@@ -583,6 +589,7 @@ function pinNav(el, prevId, nextId) {
 
 async function saveKaryawan() {
   const nama = document.getElementById('f-nama').value.trim();
+  const username = document.getElementById('f-username').value.trim().toLowerCase();
   const jabatan = document.getElementById('f-jabatan').value;
   const hp = document.getElementById('f-hp').value.trim();
   const tglMasuk = document.getElementById('f-tgl').value;
@@ -591,8 +598,14 @@ async function saveKaryawan() {
   const pinRaw = ['pin1','pin2','pin3','pin4'].map(id => document.getElementById(id).value).join('');
 
   if (!nama) { showToast('⚠️ Nama wajib diisi'); return; }
+  if (!username) { showToast('⚠️ Username wajib diisi'); return; }
+  if (!/^[a-z0-9._]+$/.test(username)) { showToast('⚠️ Username hanya huruf kecil, angka, titik, underscore'); return; }
   if (!editId && pinRaw.length !== 4) { showToast('⚠️ PIN 4 digit wajib diisi'); return; }
   if (pinRaw && pinRaw.length !== 4) { showToast('⚠️ PIN harus tepat 4 digit'); return; }
+
+  // Cek duplikat username
+  const dupUser = (S.karyawan||[]).find(k => k.username === username && k.id !== editId);
+  if (dupUser) { showToast(`⚠️ Username "@${username}" sudah dipakai ${dupUser.nama}`); return; }
 
   const dupPin = (S.karyawan||[]).find(k => k.pin === pinRaw && k.id !== editId);
   if (pinRaw && dupPin) { showToast(`⚠️ PIN sudah dipakai ${dupPin.nama}`); return; }
@@ -601,9 +614,9 @@ async function saveKaryawan() {
 
   if (editId) {
     const i = S.karyawan.findIndex(x => x.id === editId);
-    if (i >= 0) S.karyawan[i] = { ...S.karyawan[i], nama, jabatan, hp, tglMasuk, status, ...(pinRaw ? { pin: pinRaw } : {}) };
+    if (i >= 0) S.karyawan[i] = { ...S.karyawan[i], nama, username, jabatan, hp, tglMasuk, status, ...(pinRaw ? { pin: pinRaw } : {}) };
   } else {
-    S.karyawan.push({ id: genId(), nama, jabatan, hp, tglMasuk, status, pin: pinRaw, createdAt: new Date().toISOString() });
+    S.karyawan.push({ id: genId(), nama, username, jabatan, hp, tglMasuk, status, pin: pinRaw, createdAt: new Date().toISOString() });
   }
 
   try {

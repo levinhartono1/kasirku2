@@ -1279,9 +1279,24 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
   <div id="page-supplier" class="page">
     <div style="padding:1.5rem">
       <div class="page-header">
-        <div><div class="page-title">Stok Masuk</div><div class="page-sub">Catat pembelian dari supplier</div></div>
-        <button class="btn btn-primary" onclick="openBeliModal()">+ Catat Pembelian</button>
+        <div><div class="page-title">Stok Masuk & Supplier</div><div class="page-sub">Kelola supplier dan catat pembelian stok</div></div>
+        <div class="btn-group">
+          <button class="btn" onclick="showSupplierTab('daftar')" id="tab-daftar-supplier">👥 Daftar Supplier</button>
+          <button class="btn btn-primary" onclick="openBeliModal()">+ Catat Pembelian</button>
+        </div>
       </div>
+      <!-- TAB DAFTAR SUPPLIER -->
+      <div id="supplier-daftar-wrap" style="display:none;margin-bottom:1.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:0.85rem;font-weight:700;color:var(--ink2)">👥 Daftar Supplier</div>
+          <button class="btn btn-primary btn-sm" onclick="openSupplierModal()">+ Tambah Supplier</button>
+        </div>
+        <div id="supplier-daftar-list"></div>
+        <div style="margin-top:8px">
+          <button class="btn btn-sm" onclick="showSupplierTab('close')">▲ Tutup Daftar Supplier</button>
+        </div>
+      </div>
+      <!-- TABEL STOK MASUK -->
       <div class="table-wrap">
         <table><thead><tr><th>Tanggal</th><th>Supplier</th><th>Produk</th><th>Qty</th><th>Harga Beli</th><th>Total</th><th>Catatan</th><th>Aksi</th></tr></thead>
         <tbody id="supplier-tbody"></tbody></table>
@@ -1343,6 +1358,13 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
           <option value="1">Ya — kurangi stok saat terjual</option>
           <option value="0">Tidak — stok tidak terbatas</option>
         </select>
+      </div>
+      <!-- VARIAN HARGA -->
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Varian Harga <span style="font-weight:400;text-transform:none;font-size:0.7rem;color:var(--ink3)">(opsional — jika produk punya lebih dari 1 harga)</span></label>
+        <div id="harga-varian-wrap"></div>
+        <button type="button" class="btn btn-sm" style="margin-top:6px" onclick="addHargaVarianRow()">+ Tambah Varian Harga</button>
+        <div style="font-size:0.7rem;color:var(--ink3);margin-top:5px">Contoh: "Reguler" Rp 8.000 / "Online" Rp 10.000 / "Grosir" Rp 6.500</div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1456,6 +1478,62 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
   </div>
 </div>
 
+<!-- ══ MODAL: SUPPLIER ══ -->
+<div class="modal-overlay" id="modal-supplier-form">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title" id="supplier-modal-title">Tambah Supplier</div>
+      <button class="modal-close" onclick="closeModal('modal-supplier-form')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="supplier-edit-id">
+      <div class="form-group">
+        <label class="form-label">Nama Supplier *</label>
+        <input type="text" id="sup-nama" placeholder="Nama toko/distributor">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">No. Telepon</label>
+          <input type="tel" id="sup-telp" placeholder="08xx-xxxx-xxxx">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Kontak PIC</label>
+          <input type="text" id="sup-pic" placeholder="Nama kontak">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Alamat</label>
+        <input type="text" id="sup-alamat" placeholder="Alamat supplier">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Catatan</label>
+        <input type="text" id="sup-catatan" placeholder="Opsional">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-supplier-form')">Batal</button>
+      <button class="btn btn-primary" onclick="saveSupplier()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: PILIH HARGA VARIAN ══ -->
+<div class="modal-overlay" id="modal-harga-varian">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header">
+      <div class="modal-title">Pilih Harga</div>
+      <button class="modal-close" onclick="closeModal('modal-harga-varian')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:0.82rem;font-weight:600;color:var(--ink2);margin-bottom:12px" id="hv-produk-nama"></div>
+      <div id="hv-options"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-harga-varian')">Batal</button>
+    </div>
+  </div>
+</div>
+
 <!-- BELI STOK MODAL -->
 <div class="modal-overlay" id="modal-beli">
   <div class="modal">
@@ -1466,7 +1544,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
     <div class="modal-body">
       <input type="hidden" id="beli-edit-id">
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Supplier</label><input type="text" id="beli-supplier" placeholder="Nama supplier"></div>
+        <div class="form-group">
+          <label class="form-label">Supplier</label>
+          <select id="beli-supplier">
+            <option value="">— Pilih Supplier —</option>
+          </select>
+        </div>
         <div class="form-group"><label class="form-label">Tanggal</label><input type="date" id="beli-tgl"></div>
       </div>
       <div class="form-group">
@@ -1607,6 +1690,7 @@ async function loadFromSupabase() {
       if (saved.nextId) nextId = saved.nextId;
       if (!S.subKategori) S.subKategori = [];
       if (!S.paket) S.paket = [];
+      if (!S.suppliers) S.suppliers = [];
       // Re-render after Supabase load
       renderKatBar(); renderGrid(); renderMejaBar(); renderPelangganSelect();
       updateShiftChip();
@@ -3084,14 +3168,20 @@ function parseVarian(str) {
   }).filter(v => v.nama);
 }
 
-// Override addToCart to handle varian
+// Override addToCart to handle varian harga + varian ukuran
 function addToCart(id) {
   const p = S.produk.find(x => x.id === id);
   if (!p) return;
   if (p.stokAktif && p.stok <= 0) return;
+
+  const hasHargaVarian = p.hargaVarian?.length > 0;
   const hasVarian = p.varian?.length > 0;
   const hasTopping = p.topping?.length > 0;
-  if (hasVarian || hasTopping) {
+
+  if (hasHargaVarian) {
+    // Tampilkan picker harga dulu
+    openHargaVarianPicker(id);
+  } else if (hasVarian || hasTopping) {
     openVarianPicker(p);
   } else {
     addCartDirect(p, '', [], p.harga, '');
@@ -3284,8 +3374,182 @@ async function confirmRetur() {
   showToast('✓ Retur berhasil diproses');
 }
 
-// ══ SUPPLIER ══
+// ══════════════════════════════════════════════════
+//  DAFTAR SUPPLIER
+// ══════════════════════════════════════════════════
+function showSupplierTab(mode) {
+  const wrap = document.getElementById('supplier-daftar-wrap');
+  if (!wrap) return;
+  if (mode === 'close') { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  renderDaftarSupplier();
+}
+
+function renderDaftarSupplier() {
+  const list = S.suppliers || [];
+  const el = document.getElementById('supplier-daftar-list');
+  if (!el) return;
+  if (!list.length) {
+    el.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--ink3);font-size:0.82rem">Belum ada supplier. Klik "+ Tambah Supplier".</div>';
+    return;
+  }
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">` +
+    list.map(s => `
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow-sm)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:0.9rem">${s.nama}</div>
+          ${s.pic ? `<div style="font-size:0.75rem;color:var(--ink3);margin-top:2px">👤 ${s.pic}</div>` : ''}
+          ${s.telp ? `<div style="font-size:0.75rem;color:var(--ink3)">📱 ${s.telp}</div>` : ''}
+          ${s.alamat ? `<div style="font-size:0.75rem;color:var(--ink3)">📍 ${s.alamat}</div>` : ''}
+          ${s.catatan ? `<div style="font-size:0.72rem;color:var(--ink3);font-style:italic;margin-top:3px">${s.catatan}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="btn btn-sm" onclick="openSupplierModal('${s.id}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="hapusSupplier('${s.id}')">🗑</button>
+        </div>
+      </div>
+    </div>`).join('') + `</div>`;
+}
+
+function openSupplierModal(id) {
+  const s = id ? (S.suppliers||[]).find(x=>x.id===id) : null;
+  document.getElementById('supplier-modal-title').textContent = s ? 'Edit Supplier' : 'Tambah Supplier';
+  document.getElementById('supplier-edit-id').value = id || '';
+  document.getElementById('sup-nama').value = s?.nama || '';
+  document.getElementById('sup-telp').value = s?.telp || '';
+  document.getElementById('sup-pic').value = s?.pic || '';
+  document.getElementById('sup-alamat').value = s?.alamat || '';
+  document.getElementById('sup-catatan').value = s?.catatan || '';
+  openModal('modal-supplier-form');
+  setTimeout(() => document.getElementById('sup-nama').focus(), 100);
+}
+
+async function saveSupplier() {
+  const nama = document.getElementById('sup-nama').value.trim();
+  if (!nama) { showToast('⚠️ Nama supplier wajib'); return; }
+  if (!S.suppliers) S.suppliers = [];
+  const editId = document.getElementById('supplier-edit-id').value;
+  const data = {
+    nama,
+    telp: document.getElementById('sup-telp').value.trim(),
+    pic: document.getElementById('sup-pic').value.trim(),
+    alamat: document.getElementById('sup-alamat').value.trim(),
+    catatan: document.getElementById('sup-catatan').value.trim(),
+  };
+  if (editId) {
+    const i = S.suppliers.findIndex(x=>x.id===editId);
+    if (i>=0) S.suppliers[i] = { ...S.suppliers[i], ...data };
+  } else {
+    S.suppliers.push({ id: genId(), ...data });
+  }
+  await save();
+  closeModal('modal-supplier-form');
+  renderDaftarSupplier();
+  showToast(`✓ Supplier ${editId?'diperbarui':'ditambahkan'}`);
+}
+
+async function hapusSupplier(id) {
+  const s = (S.suppliers||[]).find(x=>x.id===id);
+  if (!s || !confirm(`Hapus supplier "${s.nama}"?`)) return;
+  S.suppliers = S.suppliers.filter(x=>x.id!==id);
+  await save(); renderDaftarSupplier();
+  showToast('🗑️ Supplier dihapus');
+}
+
+function refreshSupplierDropdown() {
+  const sel = document.getElementById('beli-supplier');
+  if (!sel) return;
+  const list = S.suppliers || [];
+  sel.innerHTML = '<option value="">— Pilih Supplier —</option>' +
+    list.map(s => `<option value="${s.nama}">${s.nama}${s.pic?' ('+s.pic+')':''}</option>`).join('') +
+    '<option value="__lainnya__">+ Lainnya (ketik manual)</option>';
+}
+
+// ══════════════════════════════════════════════════
+//  VARIAN HARGA PRODUK
+// ══════════════════════════════════════════════════
+function addHargaVarianRow(nama='', harga='') {
+  const wrap = document.getElementById('harga-varian-wrap');
+  if (!wrap) return;
+  const div = document.createElement('div');
+  div.className = 'harga-varian-row';
+  div.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:6px';
+  div.innerHTML = `
+    <input type="text" placeholder="Nama varian (cth: Reguler, Online)" value="${nama}"
+      style="flex:1;font-size:0.82rem" data-role="nama">
+    <input type="number" placeholder="Harga" value="${harga}" min="0"
+      style="width:110px;font-size:0.82rem" data-role="harga">
+    <button onclick="this.closest('.harga-varian-row').remove()"
+      style="background:none;border:1px solid var(--border);border-radius:6px;width:26px;height:26px;cursor:pointer;color:var(--red);font-size:0.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">×</button>`;
+  wrap.appendChild(div);
+}
+
+function getHargaVarian() {
+  const rows = document.querySelectorAll('.harga-varian-row');
+  const result = [];
+  rows.forEach(row => {
+    const nama = row.querySelector('[data-role=nama]')?.value.trim();
+    const harga = parseInt(row.querySelector('[data-role=harga]')?.value) || 0;
+    if (nama && harga > 0) result.push({ nama, harga });
+  });
+  return result;
+}
+
+function renderHargaVarianRows(list) {
+  const wrap = document.getElementById('harga-varian-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  (list || []).forEach(v => addHargaVarianRow(v.nama, v.harga));
+}
+
+// Picker harga varian di kasir
+let _hvProdukId = null;
+
+function openHargaVarianPicker(produkId) {
+  const p = S.produk.find(x=>x.id===produkId);
+  if (!p) return;
+  _hvProdukId = produkId;
+  document.getElementById('hv-produk-nama').textContent = p.nama;
+
+  // Tampilkan harga utama + semua varian harga
+  const opts = [{ nama: 'Harga Reguler', harga: p.harga }, ...(p.hargaVarian||[])];
+  document.getElementById('hv-options').innerHTML = opts.map(v => `
+    <div onclick="pilihHargaVarian('${produkId}','${v.nama}',${v.harga})" style="
+      display:flex;justify-content:space-between;align-items:center;
+      padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);
+      margin-bottom:8px;cursor:pointer;transition:all 0.15s;background:var(--white)
+    " onmouseover="this.style.borderColor='var(--primary)';this.style.background='var(--primary-light)'"
+       onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--white)'">
+      <span style="font-weight:600;font-size:0.88rem">${v.nama}</span>
+      <span style="font-family:var(--mono);font-weight:700;color:var(--primary)">${fmt(v.harga)}</span>
+    </div>`).join('');
+
+  openModal('modal-harga-varian');
+}
+
+function pilihHargaVarian(produkId, namaVarian, harga) {
+  const p = S.produk.find(x=>x.id===produkId);
+  if (!p) return;
+  closeModal('modal-harga-varian');
+
+  // Cek apakah produk juga punya varian topping/size
+  const hasVarian = p.varian?.length > 0;
+  const hasTopping = p.topping?.length > 0;
+  if (hasVarian || hasTopping) {
+    // Override harga dasar dulu, lalu buka varian picker
+    const pTemp = { ...p, harga, _varianLabel: namaVarian === 'Harga Reguler' ? '' : namaVarian };
+    openVarianPicker(pTemp);
+  } else {
+    const suffix = namaVarian === 'Harga Reguler' ? '' : ` (${namaVarian})`;
+    addCartDirect({ ...p, nama: p.nama + suffix }, '', [], harga, '');
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  SUPPLIER - renderSupplier lama
 function renderSupplier() {
+  renderDaftarSupplier();
   const tb = document.getElementById('supplier-tbody');
   if (!tb) return;
   const list = [...(S.pembelian || [])].reverse();
@@ -3332,14 +3596,21 @@ function openBeliModal(editId) {
   document.getElementById('beli-modal-title').textContent = b ? 'Edit Pembelian' : 'Catat Pembelian Stok';
   document.getElementById('beli-edit-id').value = editId || '';
   document.getElementById('beli-tgl').value = b?.tgl || new Date().toISOString().split('T')[0];
-  document.getElementById('beli-supplier').value = b?.supplier || '';
   document.getElementById('beli-qty').value = b?.qty || 1;
   document.getElementById('beli-harga').value = b?.harga || '';
   document.getElementById('beli-catatan').value = b?.catatan || '';
+  // Populate supplier dropdown
+  const supSel = document.getElementById('beli-supplier');
+  const supList = S.suppliers || [];
+  supSel.innerHTML = '<option value="">— Pilih Supplier —</option>' +
+    supList.map(s => `<option value="${s.nama}" ${s.nama === b?.supplier ? 'selected' : ''}>${s.nama}</option>`).join('') +
+    '<option value="__manual__">Lainnya (tidak terdaftar)</option>';
+  if (b?.supplier && !supList.find(s=>s.nama===b.supplier)) {
+    supSel.innerHTML += `<option value="${b.supplier}" selected>${b.supplier}</option>`;
+  }
   document.getElementById('beli-produk').innerHTML = S.produk.map(p =>
     `<option value="${p.id}" ${p.id === b?.produkId ? 'selected' : ''}>${p.nama} (stok: ${p.stok})</option>`
   ).join('');
-  // Disable produk select saat edit (agar stok konsisten)
   document.getElementById('beli-produk').disabled = !!b;
   document.getElementById('beli-produk-lock').style.display = b ? 'block' : 'none';
   openModal('modal-beli');
@@ -3635,9 +3906,11 @@ async function saveProduk() {
   const stokAktif = document.getElementById('p-stok-aktif').value === '1';
   const varianStr = document.getElementById('p-varian')?.value || '';
   const toppingStr = document.getElementById('p-topping')?.value || '';
+  const hargaVarian = getHargaVarian();
   if (!nama || !harga) { showToast('⚠️ Nama dan harga wajib diisi'); return; }
   const data = { nama, harga, modal, stok, stokMin, kode: kode || null, katId, subKatId, stokAktif,
-    varian: parseVarian(varianStr), topping: parseVarian(toppingStr), gambar: document.getElementById('p-gambar')?.value || '' };
+    varian: parseVarian(varianStr), topping: parseVarian(toppingStr),
+    hargaVarian, gambar: document.getElementById('p-gambar')?.value || '' };
   const editId = S.editProdukId;
   if (editId) {
     const i = S.produk.findIndex(p => p.id === editId);
@@ -3670,6 +3943,7 @@ function openProdukModal(id) {
       document.getElementById('p-varian') && (document.getElementById('p-varian').value = (p.varian || []).map(v => `${v.nama}:${v.harga}`).join(','));
       document.getElementById('p-topping') && (document.getElementById('p-topping').value = (p.topping || []).map(t => `${t.nama}:${t.harga}`).join(','));
       document.getElementById('p-gambar') && (document.getElementById('p-gambar').value = p.gambar || '');
+      renderHargaVarianRows(p.hargaVarian || []);
       const gpFill = document.getElementById('p-gambar-prev');
       if(gpFill) gpFill.innerHTML = p.gambar ? `<img src="${p.gambar}" style="width:100%;height:100%;object-fit:cover;border-radius:6px" onerror="this.parentElement.innerHTML='📦'">` : '📦';
     }
@@ -3681,6 +3955,7 @@ function openProdukModal(id) {
     document.getElementById('p-varian') && (document.getElementById('p-varian').value = '');
     document.getElementById('p-topping') && (document.getElementById('p-topping').value = '');
     document.getElementById('p-gambar') && (document.getElementById('p-gambar').value = '');
+    renderHargaVarianRows([]);
     const gpClr = document.getElementById('p-gambar-prev'); if(gpClr) gpClr.innerHTML = '📦';
   }
   openModal('modal-produk');

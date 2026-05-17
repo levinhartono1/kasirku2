@@ -1994,7 +1994,17 @@ function renderProdukTable() {
       <td><div style="font-weight:600">${p.nama}</div>${p.modal?`<div style="font-size:0.7rem;color:var(--ink3)">Modal: ${fmt(p.modal)}</div>`:''}</td>
       <td><span class="badge" style="background:${k.warna}18;color:${k.warna}">${k.nama}</span></td>
       <td style="font-size:0.78rem;color:var(--ink2)">${(S.subKategori||[]).find(s=>s.id===p.subKatId)?.nama||'—'}</td>
-      <td style="font-family:var(--mono);font-weight:600">${fmt(p.harga)}</td>
+      <td style="font-family:var(--mono)">
+        <div style="font-weight:600;color:var(--primary)">${fmt(p.harga)}</div>
+        ${(p.hargaVarian||[]).length ? `
+        <div style="margin-top:4px;display:flex;flex-direction:column;gap:2px">
+          ${(p.hargaVarian||[]).map(v=>`
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="font-size:0.65rem;background:var(--surface2);color:var(--ink3);padding:1px 6px;border-radius:8px;white-space:nowrap">${v.nama}</span>
+            <span style="font-size:0.75rem;color:var(--ink2)">${fmt(v.harga)}</span>
+          </div>`).join('')}
+        </div>` : ''}
+      </td>
       <td>${stokBadge}</td>
       <td style="font-family:var(--mono);color:var(--ink3)">${p.kode||'—'}</td>
       <td><span class="badge ${p.stokAktif&&p.stok<=0?'badge-red':'badge-green'}">${p.stokAktif&&p.stok<=0?'Habis':'Aktif'}</span></td>

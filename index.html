@@ -4769,21 +4769,24 @@ window.addEventListener('resize', () => {
 //  ONBOARDING
 // ══════════════════════════════════════════════════
 function checkOnboarding() {
-  // Tampilkan wizard kalau nama toko masih default / kosong
   const nama = S.toko?.nama;
-  if (!nama || nama === 'Toko Saya' || nama === '') {
+  const owner = S.toko?.owner;
+  if (!nama || nama === 'Toko Saya' || nama === '' || !owner) {
     openModal('modal-onboarding');
   }
 }
 
 async function saveOnboarding() {
   const nama = document.getElementById('ob-nama').value.trim();
+  const owner = document.getElementById('ob-owner')?.value.trim();
   if (!nama) { showToast('⚠️ Nama toko wajib diisi'); return; }
+  if (!owner) { showToast('⚠️ Nama pemilik wajib diisi'); return; }
   if (!S.toko) S.toko = {};
-  S.toko.nama  = nama;
+  S.toko.nama   = nama;
+  S.toko.owner  = owner;
   S.toko.alamat = document.getElementById('ob-alamat').value.trim();
   S.toko.telp   = document.getElementById('ob-telp').value.trim();
-  S.toko.kasir  = document.getElementById('ob-kasir').value.trim();
+  S.toko.kasir  = document.getElementById('ob-kasir').value.trim() || owner;
   S.toko.footer = document.getElementById('ob-footer').value.trim() || 'Terima kasih sudah berbelanja!';
   await save();
   document.getElementById('toko-nama-top') && (document.getElementById('toko-nama-top').textContent = '🏪 ' + S.toko.nama);
@@ -4987,6 +4990,50 @@ function openSubKatModalFor(katId) {
 }
 
 </script>
+
+<!-- ══ ONBOARDING MODAL ══ -->
+<div class="modal-overlay" id="modal-onboarding" style="z-index:9998">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header" style="background:var(--ink);border-radius:14px 14px 0 0;padding:1.5rem">
+      <div>
+        <div style="font-family:var(--display);font-size:1.3rem;font-weight:800;color:#fff">Selamat Datang! 👋</div>
+        <div style="font-size:0.78rem;color:rgba(255,255,255,0.5);margin-top:4px">Lengkapi profil toko dulu sebelum mulai</div>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nama Toko <span style="color:var(--red)">*</span></label>
+        <input type="text" id="ob-nama" placeholder="Warung Bu Ani" style="width:100%;box-sizing:border-box">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nama Pemilik / Owner <span style="color:var(--red)">*</span></label>
+        <input type="text" id="ob-owner" placeholder="Nama pemilik toko" style="width:100%;box-sizing:border-box">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Alamat</label>
+          <input type="text" id="ob-alamat" placeholder="Jl. Contoh No. 1" style="width:100%;box-sizing:border-box">
+        </div>
+        <div class="form-group">
+          <label class="form-label">No. Telepon</label>
+          <input type="text" id="ob-telp" placeholder="0812..." style="width:100%;box-sizing:border-box">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nama Kasir / Operator</label>
+        <input type="text" id="ob-kasir" placeholder="Nama kasir utama" style="width:100%;box-sizing:border-box">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pesan Footer Struk</label>
+        <input type="text" id="ob-footer" placeholder="Terima kasih sudah berbelanja!" style="width:100%;box-sizing:border-box">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="width:100%;padding:12px;font-size:0.95rem" onclick="saveOnboarding()">Mulai Pakai KasirKu →</button>
+    </div>
+  </div>
+</div>
+
 
 <div class="modal-overlay" id="modal-subkat">
   <div class="modal" style="max-width:420px">

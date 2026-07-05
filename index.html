@@ -4453,17 +4453,6 @@ async function onAuthSuccess(user) {
   if (data) {
     currentTokoId = data.id;
   } else {
-    // Akun baru — clear cache lama agar tidak kebawa data toko sebelumnya
-    localStorage.removeItem(LS_CACHE);
-    // Reset S ke default bersih
-    S = {
-      toko: { nama: 'Toko Saya', alamat: '', telp: '', kasir: 'Admin', footer: 'Terima kasih telah berbelanja!' },
-      kategori: [], produk: [], transaksi: [], pelanggan: [], pembelian: [],
-      karyawan: [], suppliers: [], subKategori: [], paket: [],
-      shiftHistory: [], holdOrders: {}, setting: { ppn: 0, service: 0, poinRate: 1, poinRedeem: 100 },
-      cart: [], metode: 'tunai', katFilter: null, subKatFilter: null, selectedColor: '#d4450c'
-    };
-    nextId = 1000;
     const initPayload = { ...S, nextId };
     const { data: newSt, error: insertErr } = await sb.from('toko_state').insert({
       user_id: user.id,
@@ -4484,7 +4473,7 @@ async function onAuthSuccess(user) {
   if (emailEl && user.email) emailEl.textContent = '📧 ' + user.email;
 
   // Cek apakah sudah ada role aktif yang belum expire
-  const savedRole = getRoleFromStorage();
+  const savedRole = getRoleFromStorage(user.id);
   if (savedRole) {
     // Sudah login role sebelumnya dan masih valid — langsung masuk
     document.getElementById('role-screen').style.display = 'none';
@@ -4518,12 +4507,16 @@ function pinNav(el, prevId, nextId) {
 // ══════════════════════════════════════════════════
 let _roleTarget = null;
 
-function getRoleFromStorage() {
+function getRoleFromStorage(userId) {
   try {
     const raw = localStorage.getItem('kasirku_active_role');
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (Date.now() > data.exp) {
+      localStorage.removeItem('kasirku_active_role');
+      return null;
+    }
+    if (userId && data.userId && data.userId !== userId) {
       localStorage.removeItem('kasirku_active_role');
       return null;
     }
@@ -4632,7 +4625,7 @@ function doRoleLogin() {
     return;
   }
 
-  const roleData = { role: match.jabatan, nama: match.nama, uid: match.id, exp: Date.now() + 8*60*60*1000 };
+  const roleData = { role: match.jabatan, nama: match.nama, uid: match.id, userId: currentUser?.id, exp: Date.now() + 8*60*60*1000 };
   localStorage.setItem('kasirku_active_role', JSON.stringify(roleData));
   document.getElementById('role-screen').style.display = 'none';
   applyRoleAccess(match.jabatan, match.nama);
@@ -4661,7 +4654,7 @@ async function saveOwnerSetup() {
   await save();
 
   // FIX: simpan ID yang benar (bukan index terakhir yang bisa salah)
-  const roleData = { role: 'owner', nama, uid: newOwner.id, exp: Date.now() + 8*60*60*1000 };
+  const roleData = { role: 'owner', nama, uid: newOwner.id, userId: currentUser?.id, exp: Date.now() + 8*60*60*1000 };
   localStorage.setItem('kasirku_active_role', JSON.stringify(roleData));
   document.getElementById('role-screen').style.display = 'none';
   applyRoleAccess('owner', nama);

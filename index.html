@@ -4472,18 +4472,31 @@ async function onAuthSuccess(user) {
   const emailEl = document.getElementById('setting-email-display');
   if (emailEl && user.email) emailEl.textContent = '📧 ' + user.email;
 
-  // Cek apakah sudah ada role aktif yang belum expire
+  // Verifikasi savedRole ke S.karyawan — cegah ghost session lintas akun
+  const karyawan = S.karyawan || [];
+  const hasOwner = karyawan.some(k => k.jabatan === 'owner');
+
+  // Belum ada owner → paksa setup owner dulu
+  if (!hasOwner) {
+    localStorage.removeItem('kasirku_active_role');
+    showRoleScreen();
+    return;
+  }
+
   const savedRole = getRoleFromStorage(user.id);
   if (savedRole) {
-    // Sudah login role sebelumnya dan masih valid — langsung masuk
-    document.getElementById('role-screen').style.display = 'none';
-    applyRoleAccess(savedRole.role, savedRole.nama);
-    setTimeout(checkOnboarding, 300);
-    showToast(`✅ Selamat datang, ${savedRole.nama}!`);
-  } else {
-    // Belum ada role atau expired — tampilkan role screen
-    showRoleScreen();
+    const stillValid = karyawan.some(k => k.id === savedRole.uid);
+    if (stillValid) {
+      document.getElementById('role-screen').style.display = 'none';
+      applyRoleAccess(savedRole.role, savedRole.nama);
+      setTimeout(checkOnboarding, 300);
+      showToast(`✅ Selamat datang, ${savedRole.nama}!`);
+      return;
+    }
+    localStorage.removeItem('kasirku_active_role');
   }
+
+  showRoleScreen();
 }
 
 // ══════════════════════════════════════════════════
@@ -4507,16 +4520,12 @@ function pinNav(el, prevId, nextId) {
 // ══════════════════════════════════════════════════
 let _roleTarget = null;
 
-function getRoleFromStorage(userId) {
+function getRoleFromStorage() {
   try {
     const raw = localStorage.getItem('kasirku_active_role');
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (Date.now() > data.exp) {
-      localStorage.removeItem('kasirku_active_role');
-      return null;
-    }
-    if (userId && data.userId && data.userId !== userId) {
       localStorage.removeItem('kasirku_active_role');
       return null;
     }
@@ -4625,7 +4634,7 @@ function doRoleLogin() {
     return;
   }
 
-  const roleData = { role: match.jabatan, nama: match.nama, uid: match.id, userId: currentUser?.id, exp: Date.now() + 8*60*60*1000 };
+  const roleData = { role: match.jabatan, nama: match.nama, uid: match.id, exp: Date.now() + 8*60*60*1000 };
   localStorage.setItem('kasirku_active_role', JSON.stringify(roleData));
   document.getElementById('role-screen').style.display = 'none';
   applyRoleAccess(match.jabatan, match.nama);
@@ -4654,7 +4663,7 @@ async function saveOwnerSetup() {
   await save();
 
   // FIX: simpan ID yang benar (bukan index terakhir yang bisa salah)
-  const roleData = { role: 'owner', nama, uid: newOwner.id, userId: currentUser?.id, exp: Date.now() + 8*60*60*1000 };
+  const roleData = { role: 'owner', nama, uid: newOwner.id, exp: Date.now() + 8*60*60*1000 };
   localStorage.setItem('kasirku_active_role', JSON.stringify(roleData));
   document.getElementById('role-screen').style.display = 'none';
   applyRoleAccess('owner', nama);
@@ -5168,3 +5177,4 @@ function openSubKatModalFor(katId) {
 
 </body>
 </html>
+  

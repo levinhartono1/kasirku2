@@ -1675,12 +1675,6 @@ function load() {
       // Ensure new fields exist after load
       if (!S.subKategori) S.subKategori = [];
       if (!S.subKatFilter) S.subKatFilter = null;
-      // Pastikan selalu ada default owner — untuk akun lama yang belum setup
-      if (!S.karyawan) S.karyawan = [];
-      if (!S.karyawan.some(k => k.jabatan === 'owner')) {
-        S.karyawan.push({ id: 'k_default', nama: 'Owner', jabatan: 'owner', username: 'kasirku', pin: '1234', status: 'aktif' });
-        save(); // simpan ke Supabase
-      }
       if (!S.paket) S.paket = [];
     }
   } catch(e) {}
@@ -4459,18 +4453,6 @@ async function onAuthSuccess(user) {
   if (data) {
     currentTokoId = data.id;
   } else {
-    // Buat default owner untuk akun baru
-    if (!S.karyawan) S.karyawan = [];
-    if (!S.karyawan.some(k => k.jabatan === 'owner')) {
-      S.karyawan.push({
-        id: 'k' + Date.now(),
-        nama: 'Owner',
-        jabatan: 'owner',
-        username: 'kasirku',
-        pin: '1234',
-        status: 'aktif'
-      });
-    }
     const initPayload = { ...S, nextId };
     const { data: newSt, error: insertErr } = await sb.from('toko_state').insert({
       user_id: user.id,
@@ -4490,18 +4472,16 @@ async function onAuthSuccess(user) {
   const emailEl = document.getElementById('setting-email-display');
   if (emailEl && user.email) emailEl.textContent = '📧 ' + user.email;
 
-  // Cek apakah sudah ada role aktif yang belum expire
-  const savedRole = getRoleFromStorage();
-  if (savedRole) {
-    // Sudah login role sebelumnya dan masih valid — langsung masuk
-    document.getElementById('role-screen').style.display = 'none';
-    applyRoleAccess(savedRole.role, savedRole.nama);
-    setTimeout(checkOnboarding, 300);
-    showToast(`✅ Selamat datang, ${savedRole.nama}!`);
-  } else {
-    // Belum ada role atau expired — tampilkan role screen
-    showRoleScreen();
+  // Pastikan selalu ada default owner
+  if (!S.karyawan) S.karyawan = [];
+  if (!S.karyawan.some(k => k.jabatan === 'owner')) {
+    S.karyawan.push({ id: 'k_default', nama: 'Owner', jabatan: 'owner', username: 'kasirku', pin: '1234', status: 'aktif' });
+    save(); // background save
   }
+
+  // Cek savedRole
+  localStorage.removeItem('kasirku_active_role'); // selalu paksa pilih role ulang saat login baru
+  showRoleScreen();
 }
 
 // ══════════════════════════════════════════════════

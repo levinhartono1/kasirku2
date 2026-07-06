@@ -916,10 +916,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
         Masuk →
       </button>
       <div id="role-login-msg" style="margin-top:10px;font-size:0.8rem;color:#c92a2a;text-align:center;display:none"></div>
-      <div id="btn-buat-owner" style="text-align:center;margin-top:8px;display:none">
-        <button onclick="showSetupOwner()" style="background:none;border:none;color:#d4450c;font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600">+ Buat Akun Owner Baru</button>
-      </div>
-      <div style="text-align:center;margin-top:8px">
+      <div style="text-align:center;margin-top:12px">
         <button onclick="doLogout()" style="background:none;border:none;color:#a09890;font-size:0.75rem;cursor:pointer;font-family:'DM Sans',sans-serif">← Keluar / Ganti Akun Email</button>
       </div>
     </div>
@@ -4475,18 +4472,16 @@ async function onAuthSuccess(user) {
   const emailEl = document.getElementById('setting-email-display');
   if (emailEl && user.email) emailEl.textContent = '📧 ' + user.email;
 
-  // Cek apakah sudah ada role aktif yang belum expire
-  const savedRole = getRoleFromStorage();
-  if (savedRole) {
-    // Sudah login role sebelumnya dan masih valid — langsung masuk
-    document.getElementById('role-screen').style.display = 'none';
-    applyRoleAccess(savedRole.role, savedRole.nama);
-    setTimeout(checkOnboarding, 300);
-    showToast(`✅ Selamat datang, ${savedRole.nama}!`);
-  } else {
-    // Belum ada role atau expired — tampilkan role screen
-    showRoleScreen();
+  // Pastikan selalu ada default owner
+  if (!S.karyawan) S.karyawan = [];
+  if (!S.karyawan.some(k => k.jabatan === 'owner')) {
+    S.karyawan.push({ id: 'k_default', nama: 'Owner', jabatan: 'owner', username: 'kasirku', pin: '1234', status: 'aktif' });
+    save(); // background save
   }
+
+  // Cek savedRole
+  localStorage.removeItem('kasirku_active_role'); // selalu paksa pilih role ulang saat login baru
+  showRoleScreen();
 }
 
 // ══════════════════════════════════════════════════
@@ -4521,13 +4516,6 @@ function getRoleFromStorage() {
     }
     return data;
   } catch(e) { return null; }
-}
-
-function showSetupOwner() {
-  document.getElementById('role-login').style.display = 'none';
-  document.getElementById('role-setup-owner').style.display = 'block';
-  document.getElementById('role-pick').style.display = 'none';
-  setTimeout(() => { const el = document.getElementById('setup-nama'); if(el) el.focus(); }, 100);
 }
 
 function showRoleScreen() {
@@ -4590,10 +4578,6 @@ function showRolePick() {
 function showRoleLogin(jabatan) {
   _roleTarget = jabatan;
   const label = {owner:'Owner', kasir:'Kasir'}[jabatan] || jabatan;
-  // Tampilkan tombol Buat Owner hanya kalau belum ada owner
-  const hasOwner = (S.karyawan||[]).some(k => k.jabatan === 'owner');
-  const btnBuat = document.getElementById('btn-buat-owner');
-  if (btnBuat) btnBuat.style.display = (!hasOwner && jabatan === 'owner') ? 'block' : 'none';
   document.getElementById('role-pick').style.display = 'none';
   document.getElementById('role-login').style.display = 'block';
   document.getElementById('role-login-title').textContent = `Masuk sebagai ${label}`;

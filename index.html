@@ -1645,7 +1645,7 @@ const LS_CACHE = 'kasirku_cache_v2'; // local cache for offline fallback
 
 // ── save() sekarang async — selalu await sebelum toast sukses
 async function save() {
-  const payload = { ...S, cart: [], editProdukId: null, nextId };
+  const payload = { ...S, cart: [], editProdukId: null, nextId, _userId: currentUser?.id };
   // 1. Simpan lokal dulu (instant, tidak pernah gagal)
   localStorage.setItem(LS_CACHE, JSON.stringify(payload));
   // 2. Sync ke Supabase dan TUNGGU selesai
@@ -4466,6 +4466,20 @@ async function onAuthSuccess(user) {
 
   document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'none';
+
+  // Clear cache lama jika user berbeda
+  try {
+    const cachedRaw = localStorage.getItem(LS_CACHE);
+    if (cachedRaw) {
+      const cached = JSON.parse(cachedRaw);
+      if (cached._userId && cached._userId !== user.id) {
+        localStorage.removeItem(LS_CACHE);
+        // Reset S ke bersih
+        S.karyawan = [];
+        S.produk = S.produk; // keep other data until Supabase loads
+      }
+    }
+  } catch(e) {}
 
   // Load data dulu sebelum cek role
   await loadFromSupabase();

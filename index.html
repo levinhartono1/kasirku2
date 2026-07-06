@@ -4475,18 +4475,9 @@ async function onAuthSuccess(user) {
   const emailEl = document.getElementById('setting-email-display');
   if (emailEl && user.email) emailEl.textContent = '📧 ' + user.email;
 
-  // Cek apakah sudah ada role aktif yang belum expire
-  const savedRole = getRoleFromStorage();
-  if (savedRole) {
-    // Sudah login role sebelumnya dan masih valid — langsung masuk
-    document.getElementById('role-screen').style.display = 'none';
-    applyRoleAccess(savedRole.role, savedRole.nama);
-    setTimeout(checkOnboarding, 300);
-    showToast(`✅ Selamat datang, ${savedRole.nama}!`);
-  } else {
-    // Belum ada role atau expired — tampilkan role screen
-    showRoleScreen();
-  }
+  // Selalu clear role lama — cegah cross-account contamination
+  localStorage.removeItem('kasirku_active_role');
+  showRoleScreen();
 }
 
 // ══════════════════════════════════════════════════
@@ -4516,11 +4507,6 @@ function getRoleFromStorage() {
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (Date.now() > data.exp) {
-      localStorage.removeItem('kasirku_active_role');
-      return null;
-    }
-    // Jika userId tidak cocok dengan user yang sedang login, buang
-    if (data.userId && currentUser?.id && data.userId !== currentUser.id) {
       localStorage.removeItem('kasirku_active_role');
       return null;
     }
@@ -4593,11 +4579,10 @@ function showRolePick() {
 }
 
 function showRoleLogin(jabatan) {
-  // Tampilkan tombol buat owner kalau belum ada
-  const _hasOwner = (S.karyawan||[]).some(k => k.jabatan === 'owner');
-  const _btnBuat = document.getElementById('btn-buat-owner');
-  if (_btnBuat) _btnBuat.style.display = (!_hasOwner && jabatan === 'owner') ? 'block' : 'none';
   _roleTarget = jabatan;
+  const _hasOwner = (S.karyawan||[]).some(k => k.jabatan === 'owner');
+  const _btn = document.getElementById('btn-buat-owner');
+  if (_btn) _btn.style.display = (!_hasOwner && jabatan === 'owner') ? 'block' : 'none';
   const label = {owner:'Owner', kasir:'Kasir'}[jabatan] || jabatan;
   // Tampilkan tombol Buat Owner hanya kalau belum ada owner
   const hasOwner = (S.karyawan||[]).some(k => k.jabatan === 'owner');

@@ -1699,7 +1699,7 @@ async function loadFromSupabase() {
       updateShiftChip();
       document.getElementById('toko-nama-top') && (document.getElementById('toko-nama-top').textContent = '🏪 ' + (S.toko?.nama || 'Toko Saya'));
       // Update cache
-      localStorage.setItem(LS_CACHE, JSON.stringify(saved));
+      localStorage.setItem(LS_CACHE, JSON.stringify({ ...saved, _userId: currentUser?.id }));
     }
   } catch(e) {
     console.warn('Load from Supabase error:', e);
@@ -4477,21 +4477,22 @@ async function onAuthSuccess(user) {
   document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'none';
 
-  // Clear cache lama jika user berbeda
+  // Selalu clear cache & role lama sebelum load — cegah data akun lain masuk
   try {
-    const cachedRaw = localStorage.getItem(LS_CACHE);
-    if (cachedRaw) {
-      const cached = JSON.parse(cachedRaw);
-      if (cached._userId && cached._userId !== user.id) {
+    const raw = localStorage.getItem(LS_CACHE);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      // Hapus cache jika milik user berbeda (atau tidak ada tag _userId = cache lama)
+      if (!cached._userId || cached._userId !== user.id) {
         localStorage.removeItem(LS_CACHE);
-        // Reset S ke bersih
-        S.karyawan = [];
-        S.produk = S.produk; // keep other data until Supabase loads
       }
     }
-  } catch(e) {}
+  } catch(e) { localStorage.removeItem(LS_CACHE); }
+  localStorage.removeItem('kasirku_active_role');
 
-  // Load data dulu sebelum cek role
+  // Reset karyawan sebelum load — jangan bawa karyawan dari session sebelumnya
+  S.karyawan = [];
+
   await loadFromSupabase();
 
   const userEl = document.getElementById('topbar-user-email');
@@ -4499,8 +4500,6 @@ async function onAuthSuccess(user) {
   const emailEl = document.getElementById('setting-email-display');
   if (emailEl && user.email) emailEl.textContent = '📧 ' + user.email;
 
-  // Selalu clear role lama — cegah cross-account contamination
-  localStorage.removeItem('kasirku_active_role');
   showRoleScreen();
 }
 

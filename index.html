@@ -680,22 +680,10 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
       <div style="font-size:0.75rem;color:#a09890;margin-top:4px">Point of Sale System</div>
     </div>
 
-    <!-- Tabs -->
-    <div style="display:flex;background:#f3f1ed;border-radius:10px;padding:4px;margin-bottom:1.5rem">
-      <button id="auth-tab-login" onclick="switchAuthTab('login')" style="
-        flex:1;padding:8px;border:none;border-radius:7px;
-        background:#d4450c;color:#fff;font-weight:600;font-size:0.85rem;
-        cursor:pointer;transition:all 0.15s;font-family:'DM Sans',sans-serif
-      ">Masuk</button>
-      <button id="auth-tab-reg" onclick="switchAuthTab('register')" style="
-        flex:1;padding:8px;border:none;border-radius:7px;
-        background:transparent;color:#6b6457;font-weight:600;font-size:0.85rem;
-        cursor:pointer;transition:all 0.15s;font-family:'DM Sans',sans-serif
-      ">Daftar</button>
-    </div>
+
 
     <!-- Login Form -->
-    <div id="auth-login-form">
+    <div id="auth-login-form" style="display:block">
       <div style="margin-bottom:1rem">
         <label style="font-size:0.78rem;font-weight:600;color:#6b6457;display:block;margin-bottom:4px">Email</label>
         <input id="auth-email" type="email" placeholder="email@kamu.com" style="
@@ -723,39 +711,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
       <div style="text-align:center;margin-top:1rem">
         <a href="#" onclick="authForgotPassword();return false" style="font-size:0.78rem;color:#a09890">Lupa password?</a>
       </div>
-    </div>
-
-    <!-- Register Form -->
-    <div id="auth-register-form" style="display:none">
-      <div style="margin-bottom:0.85rem">
-        <label style="font-size:0.78rem;font-weight:600;color:#6b6457;display:block;margin-bottom:4px">Nama Toko</label>
-        <input id="reg-toko" type="text" placeholder="Warung Bu Ani" style="
-          width:100%;padding:10px 14px;border:1.5px solid #e0dbd2;border-radius:10px;
-          font-size:0.9rem;outline:none;font-family:'DM Sans',sans-serif;box-sizing:border-box
-        " onfocus="this.style.borderColor='#d4450c'" onblur="this.style.borderColor='#e0dbd2'">
-      </div>
-      <div style="margin-bottom:0.85rem">
-        <label style="font-size:0.78rem;font-weight:600;color:#6b6457;display:block;margin-bottom:4px">Email</label>
-        <input id="reg-email" type="email" placeholder="email@kamu.com" style="
-          width:100%;padding:10px 14px;border:1.5px solid #e0dbd2;border-radius:10px;
-          font-size:0.9rem;outline:none;font-family:'DM Sans',sans-serif;box-sizing:border-box
-        " onfocus="this.style.borderColor='#d4450c'" onblur="this.style.borderColor='#e0dbd2'">
-      </div>
-      <div style="margin-bottom:1.25rem">
-        <label style="font-size:0.78rem;font-weight:600;color:#6b6457;display:block;margin-bottom:4px">Password</label>
-        <input id="reg-password" type="password" placeholder="Min. 6 karakter" style="
-          width:100%;padding:10px 14px;border:1.5px solid #e0dbd2;border-radius:10px;
-          font-size:0.9rem;outline:none;font-family:'DM Sans',sans-serif;box-sizing:border-box
-        " onfocus="this.style.borderColor='#d4450c'" onblur="this.style.borderColor='#e0dbd2'"
-          onkeydown="if(event.key==='Enter')doRegister()">
-      </div>
-      <button onclick="doRegister()" style="
-        width:100%;padding:12px;background:#d4450c;color:#fff;border:none;
-        border-radius:10px;font-weight:700;font-size:0.95rem;cursor:pointer;
-        font-family:'DM Sans',sans-serif;transition:background 0.15s
-      " onmouseover="this.style.background='#b33a0a'" onmouseout="this.style.background='#d4450c'">
-        Buat Akun →
-      </button>
     </div>
 
     <!-- Loading / Error -->
@@ -4472,16 +4427,18 @@ async function onAuthSuccess(user) {
   const emailEl = document.getElementById('setting-email-display');
   if (emailEl && user.email) emailEl.textContent = '📧 ' + user.email;
 
-  // Pastikan selalu ada default owner
-  if (!S.karyawan) S.karyawan = [];
-  if (!S.karyawan.some(k => k.jabatan === 'owner')) {
-    S.karyawan.push({ id: 'k_default', nama: 'Owner', jabatan: 'owner', username: 'kasirku', pin: '1234', status: 'aktif' });
-    save(); // background save
+  // Cek apakah sudah ada role aktif yang belum expire
+  const savedRole = getRoleFromStorage();
+  if (savedRole) {
+    // Sudah login role sebelumnya dan masih valid — langsung masuk
+    document.getElementById('role-screen').style.display = 'none';
+    applyRoleAccess(savedRole.role, savedRole.nama);
+    setTimeout(checkOnboarding, 300);
+    showToast(`✅ Selamat datang, ${savedRole.nama}!`);
+  } else {
+    // Belum ada role atau expired — tampilkan role screen
+    showRoleScreen();
   }
-
-  // Cek savedRole
-  localStorage.removeItem('kasirku_active_role'); // selalu paksa pilih role ulang saat login baru
-  showRoleScreen();
 }
 
 // ══════════════════════════════════════════════════

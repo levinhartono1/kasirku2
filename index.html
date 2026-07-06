@@ -4456,6 +4456,16 @@ async function onAuthSuccess(user) {
   if (data) {
     currentTokoId = data.id;
   } else {
+    // Akun baru — reset S ke state bersih, jangan pakai cache akun lain
+    localStorage.removeItem(LS_CACHE);
+    S = {
+      toko: { nama: 'Toko Saya', alamat: '', telp: '', kasir: 'Admin', footer: 'Terima kasih telah berbelanja!' },
+      kategori: [], produk: [], transaksi: [], pelanggan: [], pembelian: [],
+      karyawan: [], suppliers: [], subKategori: [], paket: [],
+      shiftHistory: [], holdOrders: {}, setting: { ppn: 0, service: 0, poinRate: 1, poinRedeem: 100 },
+      cart: [], metode: 'tunai', katFilter: null, subKatFilter: null, selectedColor: '#d4450c'
+    };
+    nextId = 1000;
     const initPayload = { ...S, nextId };
     const { data: newSt, error: insertErr } = await sb.from('toko_state').insert({
       user_id: user.id,

@@ -680,10 +680,22 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
       <div style="font-size:0.75rem;color:#a09890;margin-top:4px">Point of Sale System</div>
     </div>
 
-
+    <!-- Tabs -->
+    <div style="display:flex;background:#f3f1ed;border-radius:10px;padding:4px;margin-bottom:1.5rem">
+      <button id="auth-tab-login" onclick="switchAuthTab('login')" style="
+        flex:1;padding:8px;border:none;border-radius:7px;
+        background:#d4450c;color:#fff;font-weight:600;font-size:0.85rem;
+        cursor:pointer;transition:all 0.15s;font-family:'DM Sans',sans-serif
+      ">Masuk</button>
+      <button id="auth-tab-reg" onclick="switchAuthTab('register')" style="
+        flex:1;padding:8px;border:none;border-radius:7px;
+        background:transparent;color:#6b6457;font-weight:600;font-size:0.85rem;
+        cursor:pointer;transition:all 0.15s;font-family:'DM Sans',sans-serif
+      ">Daftar</button>
+    </div>
 
     <!-- Login Form -->
-    <div id="auth-login-form" style="display:block">
+    <div id="auth-login-form">
       <div style="margin-bottom:1rem">
         <label style="font-size:0.78rem;font-weight:600;color:#6b6457;display:block;margin-bottom:4px">Email</label>
         <input id="auth-email" type="email" placeholder="email@kamu.com" style="
@@ -711,6 +723,39 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
       <div style="text-align:center;margin-top:1rem">
         <a href="#" onclick="authForgotPassword();return false" style="font-size:0.78rem;color:#a09890">Lupa password?</a>
       </div>
+    </div>
+
+    <!-- Register Form -->
+    <div id="auth-register-form" style="display:none">
+      <div style="margin-bottom:0.85rem">
+        <label style="font-size:0.78rem;font-weight:600;color:#6b6457;display:block;margin-bottom:4px">Nama Toko</label>
+        <input id="reg-toko" type="text" placeholder="Warung Bu Ani" style="
+          width:100%;padding:10px 14px;border:1.5px solid #e0dbd2;border-radius:10px;
+          font-size:0.9rem;outline:none;font-family:'DM Sans',sans-serif;box-sizing:border-box
+        " onfocus="this.style.borderColor='#d4450c'" onblur="this.style.borderColor='#e0dbd2'">
+      </div>
+      <div style="margin-bottom:0.85rem">
+        <label style="font-size:0.78rem;font-weight:600;color:#6b6457;display:block;margin-bottom:4px">Email</label>
+        <input id="reg-email" type="email" placeholder="email@kamu.com" style="
+          width:100%;padding:10px 14px;border:1.5px solid #e0dbd2;border-radius:10px;
+          font-size:0.9rem;outline:none;font-family:'DM Sans',sans-serif;box-sizing:border-box
+        " onfocus="this.style.borderColor='#d4450c'" onblur="this.style.borderColor='#e0dbd2'">
+      </div>
+      <div style="margin-bottom:1.25rem">
+        <label style="font-size:0.78rem;font-weight:600;color:#6b6457;display:block;margin-bottom:4px">Password</label>
+        <input id="reg-password" type="password" placeholder="Min. 6 karakter" style="
+          width:100%;padding:10px 14px;border:1.5px solid #e0dbd2;border-radius:10px;
+          font-size:0.9rem;outline:none;font-family:'DM Sans',sans-serif;box-sizing:border-box
+        " onfocus="this.style.borderColor='#d4450c'" onblur="this.style.borderColor='#e0dbd2'"
+          onkeydown="if(event.key==='Enter')doRegister()">
+      </div>
+      <button onclick="doRegister()" style="
+        width:100%;padding:12px;background:#d4450c;color:#fff;border:none;
+        border-radius:10px;font-weight:700;font-size:0.95rem;cursor:pointer;
+        font-family:'DM Sans',sans-serif;transition:background 0.15s
+      " onmouseover="this.style.background='#b33a0a'" onmouseout="this.style.background='#d4450c'">
+        Buat Akun →
+      </button>
     </div>
 
     <!-- Loading / Error -->
@@ -871,7 +916,10 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); backgr
         Masuk →
       </button>
       <div id="role-login-msg" style="margin-top:10px;font-size:0.8rem;color:#c92a2a;text-align:center;display:none"></div>
-      <div style="text-align:center;margin-top:12px">
+      <div id="btn-buat-owner" style="text-align:center;margin-top:8px;display:none">
+        <button onclick="showSetupOwner()" style="background:none;border:none;color:#d4450c;font-size:0.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600">+ Buat Akun Owner Baru</button>
+      </div>
+      <div style="text-align:center;margin-top:8px">
         <button onclick="doLogout()" style="background:none;border:none;color:#a09890;font-size:0.75rem;cursor:pointer;font-family:'DM Sans',sans-serif">← Keluar / Ganti Akun Email</button>
       </div>
     </div>
@@ -4475,6 +4523,13 @@ function getRoleFromStorage() {
   } catch(e) { return null; }
 }
 
+function showSetupOwner() {
+  document.getElementById('role-login').style.display = 'none';
+  document.getElementById('role-setup-owner').style.display = 'block';
+  document.getElementById('role-pick').style.display = 'none';
+  setTimeout(() => { const el = document.getElementById('setup-nama'); if(el) el.focus(); }, 100);
+}
+
 function showRoleScreen() {
   // FIX: pastikan S.karyawan sudah terload dari Supabase
   const karyawan = S.karyawan || [];
@@ -4535,6 +4590,10 @@ function showRolePick() {
 function showRoleLogin(jabatan) {
   _roleTarget = jabatan;
   const label = {owner:'Owner', kasir:'Kasir'}[jabatan] || jabatan;
+  // Tampilkan tombol Buat Owner hanya kalau belum ada owner
+  const hasOwner = (S.karyawan||[]).some(k => k.jabatan === 'owner');
+  const btnBuat = document.getElementById('btn-buat-owner');
+  if (btnBuat) btnBuat.style.display = (!hasOwner && jabatan === 'owner') ? 'block' : 'none';
   document.getElementById('role-pick').style.display = 'none';
   document.getElementById('role-login').style.display = 'block';
   document.getElementById('role-login-title').textContent = `Masuk sebagai ${label}`;

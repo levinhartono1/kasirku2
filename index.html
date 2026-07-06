@@ -4519,6 +4519,11 @@ function getRoleFromStorage() {
       localStorage.removeItem('kasirku_active_role');
       return null;
     }
+    // Jika userId tidak cocok dengan user yang sedang login, buang
+    if (data.userId && currentUser?.id && data.userId !== currentUser.id) {
+      localStorage.removeItem('kasirku_active_role');
+      return null;
+    }
     return data;
   } catch(e) { return null; }
 }
@@ -4588,6 +4593,10 @@ function showRolePick() {
 }
 
 function showRoleLogin(jabatan) {
+  // Tampilkan tombol buat owner kalau belum ada
+  const _hasOwner = (S.karyawan||[]).some(k => k.jabatan === 'owner');
+  const _btnBuat = document.getElementById('btn-buat-owner');
+  if (_btnBuat) _btnBuat.style.display = (!_hasOwner && jabatan === 'owner') ? 'block' : 'none';
   _roleTarget = jabatan;
   const label = {owner:'Owner', kasir:'Kasir'}[jabatan] || jabatan;
   // Tampilkan tombol Buat Owner hanya kalau belum ada owner
@@ -4635,7 +4644,7 @@ function doRoleLogin() {
     return;
   }
 
-  const roleData = { role: match.jabatan, nama: match.nama, uid: match.id, exp: Date.now() + 8*60*60*1000 };
+  const roleData = { role: match.jabatan, nama: match.nama, uid: match.id, userId: currentUser?.id, exp: Date.now() + 8*60*60*1000 };
   localStorage.setItem('kasirku_active_role', JSON.stringify(roleData));
   document.getElementById('role-screen').style.display = 'none';
   applyRoleAccess(match.jabatan, match.nama);
@@ -4664,7 +4673,7 @@ async function saveOwnerSetup() {
   await save();
 
   // FIX: simpan ID yang benar (bukan index terakhir yang bisa salah)
-  const roleData = { role: 'owner', nama, uid: newOwner.id, exp: Date.now() + 8*60*60*1000 };
+  const roleData = { role: 'owner', nama, uid: newOwner.id, userId: currentUser?.id, exp: Date.now() + 8*60*60*1000 };
   localStorage.setItem('kasirku_active_role', JSON.stringify(roleData));
   document.getElementById('role-screen').style.display = 'none';
   applyRoleAccess('owner', nama);
